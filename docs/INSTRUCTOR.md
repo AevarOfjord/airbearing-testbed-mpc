@@ -16,9 +16,9 @@ pip install -e ".[dev,viz]"
 
 Then `airbearing --help` and `make test`. Windows: `.venv\Scripts\activate`.
 
-## Labs 1–4 (software; 1–2 h each)
+## Labs 1–5 (software; 1–2 h each)
 
-Hardware is **not** required. `make lab1` … `make lab4` run the staff demos.
+Hardware is **not** required. `make lab1` … `make lab5` run the staff demos.
 
 | Lab | Hours | Topic | Done looks like |
 |-----|-------|--------|-----------------|
@@ -26,6 +26,7 @@ Hardware is **not** required. `make lab1` … `make lab4` run the staff demos.
 | 2 | 1–2 h | PD vs LQR vs MPC | Methods table from `airbearing report` / `methods.txt` for all three controllers |
 | 3 | 1–2 h | Identify `F_max` | Identified JSON **beats the guess on RMSE**; residual plot written |
 | 4 | 1–2 h | Actuators | Binary vs PWM vs `F_max` mismatch compared (`make lab4`) |
+| 5 | 1–2 h | Navigation | Onboard vs mocap vs fused on sim sensors (`make lab5`) |
 
 Student write-ups: `labs/`. Staff notes on shipped examples: `labs/staff/`.
 
@@ -45,7 +46,7 @@ airbearing compare --sim examples/logs/sim.csv --real examples/logs/hardware.csv
 
 ## Hardware (optional)
 
-Labs 1–4 are software. A real table is extra credit / a later session:
+Labs 1–5 are software. A real table is extra credit / a later session:
 
 ```bash
 airbearing run --vehicle vehicles/mine.json --armed --port /dev/ttyUSB0 --dashboard
@@ -59,6 +60,18 @@ airbearing run --vehicle vehicles/mine.json --armed --port /dev/ttyUSB0 --dashbo
 - **Lab 2:** three `runs/<id>/summary.json` (or `methods.txt`) — PD, LQR, MPC on the same hop.
 - **Lab 3:** `vehicles/*_identified.json` and the residual plot (`*.png`); identified RMSE smaller than the uncalibrated guess.
 - **Lab 4:** the binary / PWM / mismatch numbers from `make lab4` (or equivalent `summary.json`).
+- **Lab 5:** `runs/lab5/summary.json` showing fused pose RMSE below noisy mocap passthrough.
+
+## Navigation (onboard vs external)
+
+Sensors are declared on the **same** vehicle JSON under `navigation`. MPC still consumes a 6-state. Students pick a mode by editing that block (not Python):
+
+- omit `onboard` → external / mocap only
+- omit `external` → onboard IMU only
+- both → fuse (`estimator: ekf`)
+- omit `navigation` entirely → sim passthrough (old behaviour)
+
+`examples/vehicles/fan_plus.json` ships sim passthrough; `fan_plus_fused.json` ships a fused EKF. `--armed` refuses invalid estimates. Actuator serial (`--port`) is not the IMU serial. Webcam ArUco is an optional extra (`pip install -e ".[webcam]"`); tests skip if OpenCV is missing.
 
 Hashes in `methods.txt` (`vehicle_sha256`, optional git hash) make it obvious which JSON produced the run.
 

@@ -21,3 +21,8 @@ def test_lab3(tmp_path: Path):
 def test_cli_lab1(tmp_path: Path):
     rc = main(["lab", "1", "--runs", str(tmp_path)])
     assert rc == 0
+
+
+def test_lab5(tmp_path: Path):
+    assert run_lab(5, runs=tmp_path) == 0
+

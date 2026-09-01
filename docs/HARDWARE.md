@@ -32,10 +32,16 @@ Typical student build: four bidirectional fans on a plus frame (`examples/vehicl
 airbearing run --vehicle vehicles/mine.json --armed --port /dev/ttyUSB0 --dashboard
 ```
 
-`--armed` is required. If mocap is enabled and the pose read fails, the runtime **sends zeros and aborts**. There is no “fire open-loop on hope.”
+`--armed` is required. `--port` is the **actuator** gateway. Configure IMU serial under `navigation.onboard.port`.
 
-For a first bring-up, keep mocap disabled and stay in simulation until the JSON matches the object you weighed.
+For a first bring-up, stay in simulation (`type: sim` sensors, or omit `navigation`) until the JSON matches the object you weighed.
 
-## Pose
+## Pose and IMU
 
-`mocap.endpoint` expects JSON `{"x","y","yaw"}` (optional `vx,vy,omega`), SI. A mock is used in sim. Replay a CSV with `airbearing run --replay path.csv` (schema comment `# airbearing_log schema_version=1 units=SI`).
+Prefer vehicle JSON `navigation` over the legacy `mocap` block.
+
+External pose: `http_mocap` JSON `{"x","y","yaw"}` (optional `vx,vy,omega`), SI; `csv_replay`; `webcam_aruco` (OpenCV extra, skipped if missing); or `sim`. Replay a CSV with `airbearing run --replay path.csv` (schema comment `# airbearing_log schema_version=1 units=SI`).
+
+Onboard IMU: `firmware/onboard_imu` prints `{"ax","ay","gyro_z"}` at ~100 Hz (body frame, SI) on **its own serial port**. Deadman stays on the actuator gateway, not the IMU stream. `navigation.onboard.port` (e.g. `/dev/ttyUSB1`) is not `--port`.
+
+`--armed` zeros commands and aborts on an invalid estimate (timed-out or missing external pose when one is configured). There is no “fire open-loop on hope.”

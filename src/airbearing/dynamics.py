@@ -26,10 +26,14 @@ class Plant:
     f_actual: np.ndarray = field(default_factory=lambda: np.zeros(0))  # along each thruster axis, Newtons
     rw_momentum: float = 0.0
     t: float = 0.0
+    accel_inertial: np.ndarray = field(default_factory=lambda: np.zeros(2))
+    accel_body: np.ndarray = field(default_factory=lambda: np.zeros(2))
 
     def __post_init__(self) -> None:
         self.state = np.asarray(self.state, dtype=float).reshape(6)
         self.f_actual = np.zeros(self.spec.n_thrusters)
+        self.accel_inertial = np.zeros(2)
+        self.accel_body = np.zeros(2)
 
     @property
     def pose(self) -> np.ndarray:
@@ -38,9 +42,19 @@ class Plant:
     def reset(self, x: float, y: float, theta: float, vx: float = 0.0, vy: float = 0.0, omega: float = 0.0) -> None:
         self.state = np.array([x, y, theta, vx, vy, omega], dtype=float)
         self.f_actual[:] = 0.0
+        self.accel_inertial[:] = 0.0
+        self.accel_body[:] = 0.0
         self.t = 0.0
         if self.spec.reaction_wheel:
             self.rw_momentum = self.spec.reaction_wheel.initial_momentum
+
+    def imu_sample(self) -> dict[str, float]:
+        """Body-frame specific force (m/s^2) and yaw rate (rad/s)."""
+        return {
+            "ax": float(self.accel_body[0]),
+            "ay": float(self.accel_body[1]),
+            "gyro_z": float(self.state[5]),
+        }
 
     def wrench_from_forces(self, forces: np.ndarray) -> np.ndarray:
         """Body wrench from per-thruster force magnitudes (N) along force_direction."""
@@ -94,6 +108,8 @@ class Plant:
         ax = F_i[0] / spec.mass - spec.linear_damping * vx / spec.mass
         ay = F_i[1] / spec.mass - spec.linear_damping * vy / spec.mass
         alpha = wrench_b[2] / spec.Iz - spec.rotational_damping * om / spec.Iz
+        self.accel_inertial = np.array([ax, ay], dtype=float)
+        self.accel_body = R.T @ self.accel_inertial
 
         # semi-implicit Euler (stable enough for teaching dt)
         vx += ax * dt

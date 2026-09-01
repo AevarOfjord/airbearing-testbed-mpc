@@ -1,5 +1,5 @@
 {
-  "name": "fan_plus",
+  "name": "fan_plus_fused",
   "mass": 4.5,
   "Iz": 0.085,
   "com": [
@@ -12,7 +12,7 @@
   "rotational_damping": 0.015,
   "control_dt": 0.05,
   "sim_dt": 0.01,
-  "notes": "Example: four computer-fan thrusters in a plus layout, bidirectional. Fans blow tangent to each arm so yaw is controllable. Radial-through-COM mounts produce zero Mz. F_max and tau are guesses \u2014 calibrate (docs/LAB.md).",
+  "notes": "Same plus-frame fans as fan_plus, with fused navigation: noisy sim mocap (x,y,yaw) plus sim IMU (ax,ay,gyro_z) through a planar EKF. Compare to fan_plus (passthrough) or drop external / onboard to run one source. F_max is still a guess \u2014 calibrate.",
   "thrusters": [
     {
       "id": "F1",
@@ -88,17 +88,45 @@
     }
   ],
   "navigation": {
-    "estimator": "passthrough",
+    "estimator": "ekf",
     "external": {
       "type": "sim",
       "meas": [
         "x",
         "y",
-        "yaw",
-        "vx",
-        "vy",
-        "omega"
-      ]
+        "yaw"
+      ],
+      "noise": {
+        "x": 0.015,
+        "y": 0.015,
+        "yaw": 0.03
+      }
+    },
+    "onboard": {
+      "type": "sim",
+      "meas": [
+        "ax",
+        "ay",
+        "gyro_z"
+      ],
+      "noise": {
+        "ax": 0.02,
+        "ay": 0.02,
+        "gyro_z": 0.01
+      }
+    },
+    "Q": {
+      "x": 1e-05,
+      "y": 1e-05,
+      "yaw": 1e-06,
+      "vx": 0.001,
+      "vy": 0.001,
+      "omega": 0.0001
+    },
+    "R": {
+      "x": 0.000225,
+      "y": 0.000225,
+      "yaw": 0.0009
     }
   }
 }

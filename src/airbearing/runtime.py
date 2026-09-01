@@ -18,7 +18,8 @@ from airbearing.safety import SafetySupervisor
 from airbearing.spec import SatelliteSpec
 from airbearing.logschema import SCHEMA_VERSION, UNITS, run_fieldnames, write_run_csv
 from airbearing.report import build_summary, write_summary
-from airbearing.telemetry import CsvReplay, HttpMocap, PoseSource, SimulatedMocap
+from airbearing.estimate import build_navigation
+from airbearing.telemetry import PoseSource
 
 
 @dataclass
@@ -81,18 +82,24 @@ class Runtime:
         self.round_binary = round_binary
         self.plant = Plant(spec)
         self.safety = SafetySupervisor(spec)
+        # Actuator serial (`port`) is never the IMU serial (navigation.onboard.port).
         self.gateway = open_gateway(spec, port if armed else None)
         self.replay_path = Path(replay) if replay else None
-        if mocap is not None:
-            self.mocap = mocap
-        elif self.replay_path is not None:
-            self.mocap = CsvReplay(str(self.replay_path))
-        elif armed and spec.mocap.enabled:
-            self.mocap = HttpMocap(spec.mocap.endpoint, spec.mocap.timeout_s)
-        else:
-            self.mocap = SimulatedMocap(self.plant)
+        self.nav = build_navigation(
+            spec,
+            self.plant,
+            mocap=mocap,
+            replay=self.replay_path,
+            armed=armed,
+            seed=seed,
+        )
+        self.mocap = mocap if mocap is not None else self.nav
         self.real = bool(armed)
-        self.replay = self.replay_path is not None or isinstance(self.mocap, CsvReplay)
+        from airbearing.telemetry import CsvReplay
+
+        self.replay = self.replay_path is not None or isinstance(
+            getattr(self.nav, "external", None), CsvReplay
+        )
         root = Path(runs_root) if runs_root else Path("runs")
         self.result = RunResult(run_dir=_new_run_dir(root, spec.name))
         self.use_rw = use_rw and spec.reaction_wheel is not None
@@ -138,6 +145,7 @@ class Runtime:
             "notes": self.spec.notes,
             "replay": str(self.replay_path) if self.replay_path else None,
             "seed": self.seed,
+            "estimator": getattr(self.nav, "name", "passthrough"),
         }
         (self.result.run_dir / "meta.json").write_text(json.dumps(meta, indent=2))
 
@@ -165,6 +173,7 @@ class Runtime:
         if self.real and not self.armed:
             raise RuntimeError("refusing hardware: pass --armed")
         self.plant.reset(*self.mission.start.tolist())
+        self.nav.reset(self.plant.state.copy())
         self.controller.reset()
         self._write_meta()
         self._t = 0.0
@@ -184,8 +193,10 @@ class Runtime:
         spec = self.spec
         dt = spec.control_dt
         loop_start = time.perf_counter()
-        pose, ok = self.mocap.read()
-        if self.real and (not ok or pose is None):
+        pose, ok = self.nav.step(dt)
+        ext = getattr(self.nav, "last_external", None)
+        ext_missing = self.nav.external is not None and (ext is None or not ext.valid)
+        if self.real and (not ok or pose is None or ext_missing):
             self.gateway.send(np.zeros(spec.n_thrusters))
             self._aborted = True
             self._abort_reason = "null telemetry refused"
@@ -254,6 +265,7 @@ class Runtime:
 
     def finish(self) -> RunResult:
         self.gateway.close()
+        self.nav.close()
         logs = self.result.logs
         final = logs[-1].state if logs else self.plant.state
         err = float(np.hypot(final[0] - self.mission.goal[0], final[1] - self.mission.goal[1]))

@@ -100,6 +100,31 @@ class Mocap:
 
 
 @dataclass
+class SensorSource:
+    type: str
+    meas: list[str] = field(default_factory=list)
+    endpoint: str = ""
+    port: str = ""
+    baud: int = 115200
+    path: str = ""
+    timeout_s: float = 0.0
+    camera: int = 0
+    marker_id: int = 0
+    marker_size_m: float = 0.05
+    table_size: float = 0.0
+    noise: dict[str, float] = field(default_factory=dict)
+
+
+@dataclass
+class Navigation:
+    estimator: str = "passthrough"
+    external: SensorSource | None = None
+    onboard: SensorSource | None = None
+    Q: dict[str, float] = field(default_factory=dict)
+    R: dict[str, float] = field(default_factory=dict)
+
+
+@dataclass
 class SatelliteSpec:
     name: str
     mass: float
@@ -114,6 +139,7 @@ class SatelliteSpec:
     sim_dt: float = 0.02
     reaction_wheel: ReactionWheel | None = None
     mocap: Mocap = field(default_factory=Mocap)
+    navigation: Navigation | None = None
     notes: str = ""
     source_path: Path | None = None
 
@@ -149,6 +175,73 @@ def _schema() -> dict[str, Any]:
 
 def validate_dict(data: dict[str, Any]) -> None:
     jsonschema.validate(instance=data, schema=_schema())
+
+
+def _sensor_source_from_dict(raw: dict[str, Any]) -> SensorSource:
+    return SensorSource(
+        type=raw["type"],
+        meas=list(raw.get("meas") or []),
+        endpoint=raw.get("endpoint", "") or "",
+        port=raw.get("port", "") or "",
+        baud=int(raw.get("baud", 115200) or 115200),
+        path=raw.get("path", "") or "",
+        timeout_s=float(raw.get("timeout_s", 0.0) or 0.0),
+        camera=int(raw.get("camera", 0) or 0),
+        marker_id=int(raw.get("marker_id", 0) or 0),
+        marker_size_m=float(raw.get("marker_size_m", 0.05) or 0.05),
+        table_size=float(raw.get("table_size", 0.0) or 0.0),
+        noise={k: float(v) for k, v in (raw.get("noise") or {}).items()},
+    )
+
+
+def navigation_from_dict(raw: dict[str, Any]) -> Navigation:
+    ext = _sensor_source_from_dict(raw["external"]) if raw.get("external") else None
+    onboard = _sensor_source_from_dict(raw["onboard"]) if raw.get("onboard") else None
+    return Navigation(
+        estimator=str(raw.get("estimator", "passthrough") or "passthrough"),
+        external=ext,
+        onboard=onboard,
+        Q={k: float(v) for k, v in (raw.get("Q") or {}).items()},
+        R={k: float(v) for k, v in (raw.get("R") or {}).items()},
+    )
+
+
+def _sensor_source_to_dict(src: SensorSource) -> dict[str, Any]:
+    d: dict[str, Any] = {"type": src.type}
+    if src.meas:
+        d["meas"] = list(src.meas)
+    if src.endpoint:
+        d["endpoint"] = src.endpoint
+    if src.port:
+        d["port"] = src.port
+    if src.baud and src.baud != 115200:
+        d["baud"] = int(src.baud)
+    if src.path:
+        d["path"] = src.path
+    if src.timeout_s:
+        d["timeout_s"] = float(src.timeout_s)
+    if src.type == "webcam_aruco":
+        d["camera"] = int(src.camera)
+        d["marker_id"] = int(src.marker_id)
+        d["marker_size_m"] = float(src.marker_size_m)
+    if src.table_size:
+        d["table_size"] = float(src.table_size)
+    if src.noise:
+        d["noise"] = {k: float(v) for k, v in src.noise.items()}
+    return d
+
+
+def navigation_to_dict(nav: Navigation) -> dict[str, Any]:
+    d: dict[str, Any] = {"estimator": nav.estimator}
+    if nav.external is not None:
+        d["external"] = _sensor_source_to_dict(nav.external)
+    if nav.onboard is not None:
+        d["onboard"] = _sensor_source_to_dict(nav.onboard)
+    if nav.Q:
+        d["Q"] = {k: float(v) for k, v in nav.Q.items()}
+    if nav.R:
+        d["R"] = {k: float(v) for k, v in nav.R.items()}
+    return d
 
 
 def spec_from_dict(data: dict[str, Any], source: Path | None = None) -> SatelliteSpec:
@@ -189,6 +282,9 @@ def spec_from_dict(data: dict[str, Any], source: Path | None = None) -> Satellit
             endpoint=m.get("endpoint", mocap.endpoint),
             timeout_s=m.get("timeout_s", 0.05),
         )
+    navigation = None
+    if data.get("navigation"):
+        navigation = navigation_from_dict(data["navigation"])
     return SatelliteSpec(
         name=data["name"],
         mass=data["mass"],
@@ -203,6 +299,7 @@ def spec_from_dict(data: dict[str, Any], source: Path | None = None) -> Satellit
         sim_dt=data.get("sim_dt", 0.02),
         reaction_wheel=rw,
         mocap=mocap,
+        navigation=navigation,
         notes=data.get("notes", ""),
         source_path=source,
     )
@@ -349,6 +446,8 @@ def spec_to_dict(spec: SatelliteSpec) -> dict[str, Any]:
             "endpoint": spec.mocap.endpoint,
             "timeout_s": spec.mocap.timeout_s,
         }
+    if spec.navigation is not None:
+        data["navigation"] = navigation_to_dict(spec.navigation)
     return data
 
 

@@ -45,8 +45,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     if args.duration:
         mission.duration = args.duration
     ctrl = _controller(args.controller, spec)
-    if args.armed and not args.port and spec.mocap.enabled is False:
-        print("refusing: --armed requires --port and working telemetry (set mocap.enabled)", file=sys.stderr)
+    if args.armed and not args.port:
+        print("refusing: --armed requires --port (actuator gateway; IMU uses navigation.onboard.port)", file=sys.stderr)
         return 2
     dash = None
     rt = Runtime(
@@ -425,8 +425,8 @@ def build_parser() -> argparse.ArgumentParser:
     ident.add_argument("--residual", default=None, help="write residual PNG")
     ident.set_defaults(func=cmd_identify)
 
-    lab = sub.add_parser("lab", help="run a numbered lab (1 editor, 2 controllers, 3 ID, 4 actuators)")
-    lab.add_argument("n", type=int, choices=[1, 2, 3, 4])
+    lab = sub.add_parser("lab", help="run a numbered lab (1 editor, 2 controllers, 3 ID, 4 actuators, 5 nav)")
+    lab.add_argument("n", type=int, choices=[1, 2, 3, 4, 5])
     lab.add_argument("--runs", default="runs")
     lab.set_defaults(func=cmd_lab)
 

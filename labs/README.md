@@ -8,6 +8,7 @@ Hardware lives in **one JSON** file. Do not edit Python to add a satellite. Copy
 | 2 Controllers | `make lab2` | Same mission: PD vs LQR vs MPC; cite `airbearing report` |
 | 3 System ID | `make lab3` | Fit `F_max` scale from a log; residual plot |
 | 4 Actuators | `make lab4` | Solenoid (relax vs binary) vs PWM fans vs `F_max` mismatch |
+| 5 Navigation | `make lab5` | Onboard IMU vs external mocap vs fused EKF (sim sensors) |
 
 Notes for shipped examples: [`staff/`](staff/).
 

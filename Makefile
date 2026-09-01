@@ -5,7 +5,7 @@ endif
 PIP ?= $(PYTHON) -m pip
 VEHICLE ?= examples/vehicles/fan_plus.json
 
-.PHONY: install test run view edit-vehicle new-vehicle check lab1 lab2 lab3 lab4 identify compare report compare-actuators assets golden-logs instructor
+.PHONY: install test run view edit-vehicle new-vehicle check lab1 lab2 lab3 lab4 lab5 identify compare report compare-actuators assets golden-logs instructor
 
 install:
 	$(PIP) install -e ".[dev,viz]"
@@ -39,6 +39,9 @@ lab3:
 
 lab4:
 	$(PYTHON) -m airbearing lab 4
+
+lab5:
+	$(PYTHON) -m airbearing lab 5
 
 identify:
 	$(PYTHON) -m airbearing identify $(LOG) --vehicle $(VEHICLE)

@@ -38,6 +38,7 @@
     },
     "reaction_wheel": { "$ref": "#/$defs/reaction_wheel" },
     "mocap": { "$ref": "#/$defs/mocap" },
+    "navigation": { "$ref": "#/$defs/navigation" },
     "notes": { "type": "string" }
   },
   "$defs": {
@@ -124,6 +125,78 @@
         "rigid_body_id": { "type": "integer" },
         "endpoint": { "type": "string" },
         "timeout_s": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "nav_diag": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Diagonal covariance entries (SI^2). Missing keys use code defaults.",
+      "properties": {
+        "x": { "type": "number", "minimum": 0 },
+        "y": { "type": "number", "minimum": 0 },
+        "yaw": { "type": "number", "minimum": 0 },
+        "vx": { "type": "number", "minimum": 0 },
+        "vy": { "type": "number", "minimum": 0 },
+        "omega": { "type": "number", "minimum": 0 },
+        "ax": { "type": "number", "minimum": 0 },
+        "ay": { "type": "number", "minimum": 0 },
+        "gyro_z": { "type": "number", "minimum": 0 }
+      }
+    },
+    "sensor_noise": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "1-sigma SI noise used by sim drivers when sampling.",
+      "properties": {
+        "x": { "type": "number", "minimum": 0 },
+        "y": { "type": "number", "minimum": 0 },
+        "yaw": { "type": "number", "minimum": 0 },
+        "vx": { "type": "number", "minimum": 0 },
+        "vy": { "type": "number", "minimum": 0 },
+        "omega": { "type": "number", "minimum": 0 },
+        "ax": { "type": "number", "minimum": 0 },
+        "ay": { "type": "number", "minimum": 0 },
+        "gyro_z": { "type": "number", "minimum": 0 }
+      }
+    },
+    "sensor_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["http_mocap", "csv_replay", "webcam_aruco", "serial_imu", "sim"]
+        },
+        "meas": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["x", "y", "yaw", "vx", "vy", "omega", "ax", "ay", "gyro_z"]
+          }
+        },
+        "endpoint": { "type": "string" },
+        "port": { "type": "string", "description": "IMU serial port; not the actuator gateway" },
+        "baud": { "type": "integer", "exclusiveMinimum": 0 },
+        "path": { "type": "string" },
+        "timeout_s": { "type": "number", "minimum": 0 },
+        "camera": { "type": "integer", "minimum": 0 },
+        "marker_id": { "type": "integer" },
+        "marker_size_m": { "type": "number", "exclusiveMinimum": 0 },
+        "table_size": { "type": "number", "exclusiveMinimum": 0 },
+        "noise": { "$ref": "#/$defs/sensor_noise" }
+      }
+    },
+    "navigation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Onboard vs external sensors. Omit this object for sim passthrough (legacy). Omit external → onboard-only; omit onboard → mocap-only; both → fuse.",
+      "properties": {
+        "estimator": { "type": "string", "enum": ["passthrough", "ekf"] },
+        "external": { "$ref": "#/$defs/sensor_source" },
+        "onboard": { "$ref": "#/$defs/sensor_source" },
+        "Q": { "$ref": "#/$defs/nav_diag" },
+        "R": { "$ref": "#/$defs/nav_diag" }
       }
     }
   }

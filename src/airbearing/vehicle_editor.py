@@ -227,6 +227,13 @@ def one_screen_report(spec: SatelliteSpec) -> str:
             f"+Mz={lim.get('+Mz', 0):.3g}  -Mz={lim.get('-Mz', 0):.3g}"
         ),
     ]
+    nav = getattr(spec, "navigation", None)
+    if nav is not None:
+        ext = nav.external.type if nav.external else "—"
+        onb = nav.onboard.type if nav.onboard else "—"
+        lines.append(f"nav      estimator={nav.estimator}  external={ext}  onboard={onb}")
+    else:
+        lines.append("nav      (omitted → sim passthrough)")
     for t in spec.thrusters:
         lines.append(
             f"  {t.id:6s}  {t.type:16s}  pos=({t.position[0]:+.3f},{t.position[1]:+.3f})  "

@@ -69,7 +69,8 @@ Shipped **examples** (copy, then calibrate):
 | File | What |
 |------|------|
 | `examples/vehicles/solenoid_octagon.json` | 8 compressed-air solenoids, large table |
-| `examples/vehicles/fan_plus.json` | 4-fan plus layout (typical student cubesat) |
+| `examples/vehicles/fan_plus.json` | 4-fan plus layout (typical student cubesat); sim passthrough nav |
+| `examples/vehicles/fan_plus_fused.json` | same fans, EKF fused sim mocap + IMU |
 | `examples/vehicles/fan_hex.json` | 6 PWM fans + optional sim-only reaction wheel |
 | `examples/vehicles/micro_3thruster.json` | 3 binary jets (allocator is not stuck at 8; controllability should warn) |
 
@@ -110,6 +111,7 @@ airbearing run --dashboard --dashboard-port 8765
 | 2 | `make lab2` | PD vs LQR vs MPC (uses `airbearing report`) |
 | 3 | `make lab3` | identify `F_max` from a log |
 | 4 | `make lab4` | binary vs PWM vs `F_max` mismatch |
+| 5 | `make lab5` | onboard vs mocap vs fused (sim sensors) |
 
 Write-ups: [labs/README.md](labs/README.md).
 
@@ -119,7 +121,9 @@ Write-ups: [labs/README.md](labs/README.md).
 airbearing run --vehicle vehicles/mine.json --armed --port /dev/ttyUSB0 --dashboard
 ```
 
-`--armed` is required. Real mode **refuses null telemetry**. Gateways implement a **~100 ms deadman**. See [docs/HARDWARE.md](docs/HARDWARE.md) and `firmware/`.
+`--armed` is required. Real mode **refuses invalid estimates** (null / timed-out mocap). Gateways implement a **~100 ms deadman**. IMU serial is a second port (`navigation.onboard.port`), not `--port`. See [docs/HARDWARE.md](docs/HARDWARE.md) and `firmware/`.
+
+Pose source is selected in vehicle JSON (`navigation`): omit `onboard` for mocap-only, omit `external` for IMU-only, both to fuse. `estimator` is `passthrough` (copy pose) or `ekf`. Types: `sim`, `http_mocap`, `csv_replay`, `serial_imu`, `webcam_aruco`. Default if `navigation` is omitted: sim passthrough.
 
 ## Docs
 
@@ -129,7 +133,7 @@ airbearing run --vehicle vehicles/mine.json --armed --port /dev/ttyUSB0 --dashbo
 - [docs/MATH.md](docs/MATH.md) — 3-DOF, MPC, allocator
 - [docs/HARDWARE.md](docs/HARDWARE.md) — fans, solenoids, firmware protocol
 - [docs/LAB.md](docs/LAB.md) — scale calibration + system ID
-- [labs/README.md](labs/README.md) — Lab 1–4
+- [labs/README.md](labs/README.md) — Lab 1–5
 
 ## Safety
 

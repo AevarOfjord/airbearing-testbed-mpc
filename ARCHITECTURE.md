@@ -6,7 +6,13 @@
                           ▼
                  SatelliteSpec (schemas/vehicle.schema.json)
                           │
-   pose (sim plant or mocap) ──► Controller ──┤
+   sensors (onboard IMU / external mocap)
+                          │
+                          ▼
+                 estimator (passthrough | ekf)
+                          │  6-state
+                          ▼
+                 Controller ─────────────┤
                          MPC / PD / LQR       │  body wrench [Fx, Fy, Mz]
                                               ▼
                                         Allocator (n-agnostic QP)
@@ -19,7 +25,7 @@
                                    mock mocap     refuse null pose
 ```
 
-**Unified runtime** (`airbearing.runtime.Runtime`): one timed loop. Simulation swaps in `Plant` + `SimulatedMocap`. Hardware swaps in a gateway + HTTP mocap. Controllers and the allocator do not know which.
+**Unified runtime** (`airbearing.runtime.Runtime`): one timed loop. Drivers produce measurements; `passthrough` or a planar EKF outputs a 6-state; MPC always consumes that estimate. Simulation can fake IMU and/or mocap from the plant. Hardware swaps in a gateway + real drivers. `--armed` refuses invalid estimates. Controllers and the allocator do not know which sensors ran.
 
 **Allocator** builds `B ∈ ℝ^{3×n}` from each thruster’s position, force direction, `F_max`, and COM. Bounds depend on type (`[0,1]`, `[-1,1]`). n = 3, 4, 6, 8, … is a JSON problem.
 
@@ -27,7 +33,7 @@
 
 **Logs** (`airbearing.logschema`): CSV starts with `# airbearing_log schema_version=1 units=SI`. Missing required columns are refused. Each `airbearing run` writes `summary.json` + `methods.txt` (settling, ∫|u|, solver p50/p95, deadline misses, seed, git hash, vehicle hash).
 
-**Firmware** (optional): `firmware/solenoid_gateway` (`CMD:<bitmask>:<duration_ms>`) and `firmware/fan_pwm_gateway` (`PWM:d0,d1,…`) with a 100 ms deadman.
+**Firmware** (optional): `firmware/solenoid_gateway` (`CMD:<bitmask>:<duration_ms>`) and `firmware/fan_pwm_gateway` (`PWM:d0,d1,…`) with a 100 ms deadman. IMU stream: `firmware/onboard_imu` (JSON `ax,ay,gyro_z`; deadman stays on the actuator gateway).
 
 **Visual builder** (`airbearing edit-vehicle`): pygame table; save is restricted to `vehicles/`.
 **Live twin** (`view`): same `Runtime`, keyboard teleop, MPC handover, `--record` PNG.

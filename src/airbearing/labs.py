@@ -135,6 +135,73 @@ def lab4_actuators(runs: Path) -> int:
     return 0
 
 
+def lab5_navigation(runs: Path) -> int:
+    """Onboard vs external vs fused using sim sensors (no table required)."""
+    print("=== Lab 5 — onboard vs external vs fused ===")
+    spec0 = load_vehicle(shipped_vehicle("fan_plus"))
+    fused_path = shipped_vehicle("fan_plus_fused")
+    fused_spec = load_vehicle(fused_path)
+    print(f"fused example {fused_path.name} estimator={fused_spec.navigation.estimator}")
+
+    def with_nav(nav: dict):
+        d = spec_to_dict(spec0)
+        d["navigation"] = nav
+        return spec_from_dict(d)
+
+    noisy_ext = {
+        "x": 0.03, "y": 0.03, "yaw": 0.04,
+    }
+    cases = [
+        (
+            "external/passthrough",
+            with_nav({
+                "estimator": "passthrough",
+                "external": {"type": "sim", "meas": ["x", "y", "yaw", "vx", "vy", "omega"], "noise": noisy_ext},
+            }),
+        ),
+        (
+            "onboard/ekf",
+            with_nav({
+                "estimator": "ekf",
+                "onboard": {"type": "sim", "meas": ["ax", "ay", "gyro_z"]},
+            }),
+        ),
+        (
+            "fused/ekf",
+            fused_spec,
+        ),
+    ]
+    rows = []
+    for name, spec in cases:
+        mission = point_to_point(spec.table_size)
+        mission.duration = 3.0
+        rt = Runtime(spec, LinearMPC(spec, horizon=8), mission, runs_root=Path(runs) / "lab5", seed=0)
+        rt.begin()
+        errs = []
+        while rt._t < mission.duration:
+            truth = rt.plant.state.copy()
+            more = rt.tick()
+            est = rt._last_pose
+            errs.append(float(np.hypot(est[0] - truth[0], est[1] - truth[1])))
+            if not more:
+                break
+        rt.finish()
+        rmse = float(np.sqrt(np.mean(np.square(errs)))) if errs else 1e9
+        rows.append((name, rmse, rt.result.aborted, rt.result.final_error))
+        print(f"{name:22s}  pose_rmse={rmse:.4f} m  aborted={rt.result.aborted}  final={rt.result.final_error:.3f} m")
+    by = {a: b for a, b, _, _ in rows}
+    # fused should beat noisy mocap passthrough on the same plant
+    assert by["fused/ekf"] < by["external/passthrough"]
+    print("fused EKF beats noisy mocap passthrough (sim sensors). Select a mode in vehicle JSON navigation.")
+    out = Path(runs) / "lab5" / "summary.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(
+        [{"case": a, "pose_rmse": b, "aborted": c, "final_error": d} for a, b, c, d in rows],
+        indent=2,
+    ))
+    return 0
+
+
 def run_lab(n: int, runs: Path | None = None) -> int:
     runs = Path(runs) if runs else REPO / "runs"
     if n == 1:
@@ -145,4 +212,6 @@ def run_lab(n: int, runs: Path | None = None) -> int:
         return lab3_identify(runs)
     if n == 4:
         return lab4_actuators(runs)
+    if n == 5:
+        return lab5_navigation(runs)
     raise SystemExit(f"unknown lab {n}")
