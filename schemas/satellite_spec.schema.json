@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AevarOfjord/airbearing-testbed-mpc/schemas/satellite_spec.schema.json",
+  "title": "SatelliteSpec",
+  "description": "Hardware description for a planar air-bearing satellite. Students edit this JSON, not Python.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "mass", "Iz", "com", "table_size", "thrusters"],
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "mass": { "type": "number", "exclusiveMinimum": 0, "description": "kg" },
+    "Iz": { "type": "number", "exclusiveMinimum": 0, "description": "Yaw inertia about COM, kg m^2" },
+    "com": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "Center of mass in body frame [x, y] meters"
+    },
+    "table_size": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Air-bearing table side length (m). Origin at center."
+    },
+    "hull_radius": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Approximate body radius for drawing and collision (m)"
+    },
+    "linear_damping": { "type": "number", "minimum": 0, "description": "N/(m/s) residual drag (air table is nearly frictionless)" },
+    "rotational_damping": { "type": "number", "minimum": 0, "description": "N m /(rad/s)" },
+    "control_dt": { "type": "number", "exclusiveMinimum": 0, "description": "Controller period (s)" },
+    "sim_dt": { "type": "number", "exclusiveMinimum": 0, "description": "Plant integration step (s)" },
+    "thrusters": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/thruster" }
+    },
+    "reaction_wheel": { "$ref": "#/$defs/reaction_wheel" },
+    "mocap": { "$ref": "#/$defs/mocap" },
+    "notes": { "type": "string" }
+  },
+  "$defs": {
+    "thruster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "position", "force_direction", "F_max", "type"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "position": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Body-frame location [x, y] m"
+        },
+        "force_direction": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Body-frame unit force on the vehicle (opposite the jet)"
+        },
+        "F_max": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Peak force (N). CALIBRATE on a scale — see docs/LAB.md"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["binary_solenoid", "pwm_fan", "continuous"]
+        },
+        "min_pulse_ms": {
+          "type": "number",
+          "minimum": 0,
+          "description": "binary_solenoid: shortest command the valve will honor"
+        },
+        "deadman_ms": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Gateway zeros actuators if no command arrives within this window"
+        },
+        "duty_min": { "type": "number", "minimum": 0, "maximum": 1 },
+        "duty_max": { "type": "number", "minimum": 0, "maximum": 1 },
+        "bidirectional": {
+          "type": "boolean",
+          "description": "pwm_fan / continuous: command in [-1, 1] instead of [0, 1]"
+        },
+        "tau": {
+          "type": "number",
+          "minimum": 0,
+          "description": "pwm_fan first-order spin-up time constant (s)"
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "binary_solenoid" } } },
+          "then": { "required": ["min_pulse_ms", "deadman_ms"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "pwm_fan" } } },
+          "then": { "required": ["tau"] }
+        }
+      ]
+    },
+    "reaction_wheel": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Yaw-only reaction wheel. Simulation-only in this kit unless you write a driver.",
+      "required": ["inertia", "max_torque", "max_momentum", "sim_only"],
+      "properties": {
+        "inertia": { "type": "number", "exclusiveMinimum": 0 },
+        "max_torque": { "type": "number", "exclusiveMinimum": 0 },
+        "max_momentum": { "type": "number", "exclusiveMinimum": 0 },
+        "initial_momentum": { "type": "number" },
+        "sim_only": { "type": "boolean" }
+      }
+    },
+    "mocap": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "rigid_body_id": { "type": "integer" },
+        "endpoint": { "type": "string" },
+        "timeout_s": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "name": "fan_quadrotor_plus",
+  "mass": 4.5,
+  "Iz": 0.085,
+  "com": [
+    0.0,
+    0.0
+  ],
+  "table_size": 2.0,
+  "hull_radius": 0.22,
+  "linear_damping": 0.06,
+  "rotational_damping": 0.015,
+  "control_dt": 0.05,
+  "sim_dt": 0.01,
+  "notes": "Cheap student build: four computer-fan thrusters in a plus layout, reversible by flipping polarity or using two fans per arm. Spin-up tau is a guess. Fans sit on a plus frame and blow tangent to each arm so yaw is controllable. Radial-through-COM mounts produce zero Mz.",
+  "thrusters": [
+    {
+      "id": "F1",
+      "position": [
+        0.18,
+        0.0
+      ],
+      "force_direction": [
+        0.0,
+        1.0
+      ],
+      "F_max": 0.35,
+      "type": "pwm_fan",
+      "duty_min": 0.0,
+      "duty_max": 1.0,
+      "bidirectional": true,
+      "tau": 0.18,
+      "deadman_ms": 100
+    },
+    {
+      "id": "F2",
+      "position": [
+        -0.18,
+        0.0
+      ],
+      "force_direction": [
+        0.0,
+        1.0
+      ],
+      "F_max": 0.35,
+      "type": "pwm_fan",
+      "duty_min": 0.0,
+      "duty_max": 1.0,
+      "bidirectional": true,
+      "tau": 0.18,
+      "deadman_ms": 100
+    },
+    {
+      "id": "F3",
+      "position": [
+        0.0,
+        0.18
+      ],
+      "force_direction": [
+        1.0,
+        0.0
+      ],
+      "F_max": 0.35,
+      "type": "pwm_fan",
+      "duty_min": 0.0,
+      "duty_max": 1.0,
+      "bidirectional": true,
+      "tau": 0.18,
+      "deadman_ms": 100
+    },
+    {
+      "id": "F4",
+      "position": [
+        0.0,
+        -0.18
+      ],
+      "force_direction": [
+        1.0,
+        0.0
+      ],
+      "F_max": 0.35,
+      "type": "pwm_fan",
+      "duty_min": 0.0,
+      "duty_max": 1.0,
+      "bidirectional": true,
+      "tau": 0.18,
+      "deadman_ms": 100
+    }
+  ]
+}

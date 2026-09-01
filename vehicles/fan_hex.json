@@ -1,0 +1,133 @@
+{
+  "name": "fan_hex",
+  "mass": 6.0,
+  "Iz": 0.12,
+  "com": [
+    0.0,
+    0.0
+  ],
+  "table_size": 2.4,
+  "hull_radius": 0.24,
+  "linear_damping": 0.05,
+  "rotational_damping": 0.012,
+  "control_dt": 0.05,
+  "sim_dt": 0.01,
+  "notes": "Six PWM fans on a hex. Bidirectional so Fx/Fy/Mz both signs are easy. Optional reaction_wheel is sim-only.",
+  "thrusters": [
+    {
+      "id": "F1",
+      "position": [
+        0.2,
+        0.0
+      ],
+      "force_direction": [
+        -0.15,
+        0.85
+      ],
+      "F_max": 0.28,
+      "type": "pwm_fan",
+      "duty_min": 0.0,
+      "duty_max": 1.0,
+      "bidirectional": true,
+      "tau": 0.16,
+      "deadman_ms": 100
+    },
+    {
+      "id": "F2",
+      "position": [
+        0.10000000000000003,
+        0.17320508075688773
+      ],
+      "force_direction": [
+        -0.8111215932167728,
+        0.2950961894323343
+      ],
+      "F_max": 0.28,
+      "type": "pwm_fan",
+      "duty_min": 0.0,
+      "duty_max": 1.0,
+      "bidirectional": true,
+      "tau": 0.16,
+      "deadman_ms": 100
+    },
+    {
+      "id": "F3",
+      "position": [
+        -0.09999999999999996,
+        0.17320508075688776
+      ],
+      "force_direction": [
+        -0.6611215932167729,
+        -0.5549038105676656
+      ],
+      "F_max": 0.28,
+      "type": "pwm_fan",
+      "duty_min": 0.0,
+      "duty_max": 1.0,
+      "bidirectional": true,
+      "tau": 0.16,
+      "deadman_ms": 100
+    },
+    {
+      "id": "F4",
+      "position": [
+        -0.2,
+        2.4492935982947065e-17
+      ],
+      "force_direction": [
+        0.14999999999999988,
+        -0.85
+      ],
+      "F_max": 0.28,
+      "type": "pwm_fan",
+      "duty_min": 0.0,
+      "duty_max": 1.0,
+      "bidirectional": true,
+      "tau": 0.16,
+      "deadman_ms": 100
+    },
+    {
+      "id": "F5",
+      "position": [
+        -0.10000000000000009,
+        -0.17320508075688767
+      ],
+      "force_direction": [
+        0.8111215932167727,
+        -0.2950961894323346
+      ],
+      "F_max": 0.28,
+      "type": "pwm_fan",
+      "duty_min": 0.0,
+      "duty_max": 1.0,
+      "bidirectional": true,
+      "tau": 0.16,
+      "deadman_ms": 100
+    },
+    {
+      "id": "F6",
+      "position": [
+        0.10000000000000003,
+        -0.17320508075688773
+      ],
+      "force_direction": [
+        0.6611215932167729,
+        0.5549038105676659
+      ],
+      "F_max": 0.28,
+      "type": "pwm_fan",
+      "duty_min": 0.0,
+      "duty_max": 1.0,
+      "bidirectional": true,
+      "tau": 0.16,
+      "deadman_ms": 100
+    }
+  ],
+  "reaction_wheel": {
+    "inertia": 0.0015,
+    "max_torque": 0.04,
+    "max_momentum": 0.15,
+    "initial_momentum": 0.0,
+    "sim_only": true
+  }
+}

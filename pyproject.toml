@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "airbearing"
+version = "3.0.0"
+description = "Planar air-bearing satellite GNC kit: JSON vehicles, linear MPC, any thruster count. Not flight software."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [
+  { name = "Ævar Öfjörð", email = "64787704+AevarOfjord@users.noreply.github.com" },
+]
+keywords = ["satellite", "mpc", "air-bearing", "gnc", "education"]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Intended Audience :: Education",
+  "Topic :: Scientific/Engineering",
+]
+dependencies = [
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "cvxpy>=1.5",
+  "clarabel>=0.7",
+  "osqp>=0.6",
+  "matplotlib>=3.8",
+  "jsonschema>=4.20",
+  "Pillow>=10.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-timeout>=2.3"]
+hardware = ["pyserial>=3.5"]
+
+[project.scripts]
+airbearing = "airbearing.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/AevarOfjord/airbearing-testbed-mpc"
+Repository = "https://github.com/AevarOfjord/airbearing-testbed-mpc"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+airbearing = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+timeout = 120
+addopts = "-q"
+filterwarnings = [
+  "ignore:You are solving a parameterized problem:UserWarning",
+]

@@ -1,0 +1,63 @@
+{
+  "name": "micro_3thruster",
+  "mass": 2.0,
+  "Iz": 0.018,
+  "com": [
+    0.0,
+    0.0
+  ],
+  "table_size": 1.5,
+  "hull_radius": 0.14,
+  "linear_damping": 0.03,
+  "rotational_damping": 0.008,
+  "control_dt": 0.05,
+  "sim_dt": 0.01,
+  "notes": "Three unidirectional solenoids. Proves the allocator is not hard-coded to 8. Controllability check should WARN: 3 rays cannot positively span R^3 (both signs of Fx,Fy,Mz). Add a 4th thruster or make them bidirectional.",
+  "thrusters": [
+    {
+      "id": "T1",
+      "position": [
+        0.12,
+        0.0
+      ],
+      "force_direction": [
+        1.0,
+        0.0
+      ],
+      "F_max": 0.4,
+      "type": "binary_solenoid",
+      "min_pulse_ms": 25,
+      "deadman_ms": 100
+    },
+    {
+      "id": "T2",
+      "position": [
+        -0.05999999999999997,
+        0.10392304845413264
+      ],
+      "force_direction": [
+        -0.4999999999999998,
+        0.8660254037844387
+      ],
+      "F_max": 0.4,
+      "type": "binary_solenoid",
+      "min_pulse_ms": 25,
+      "deadman_ms": 100
+    },
+    {
+      "id": "T3",
+      "position": [
+        -0.06000000000000005,
+        -0.1039230484541326
+      ],
+      "force_direction": [
+        -0.5000000000000004,
+        -0.8660254037844384
+      ],
+      "F_max": 0.4,
+      "type": "binary_solenoid",
+      "min_pulse_ms": 25,
+      "deadman_ms": 100
+    }
+  ]
+}

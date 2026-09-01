@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+title: airbearing-testbed-mpc
+message: Planar air-bearing satellite GNC student kit (not flight software).
+type: software
+authors:
+  - family-names: Öfjörð
+    given-names: Ævar
+    alias: AevarOfjord
+license: MIT
+repository-code: https://github.com/AevarOfjord/airbearing-testbed-mpc

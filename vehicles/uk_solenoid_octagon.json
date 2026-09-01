@@ -1,0 +1,144 @@
+{
+  "name": "uk_solenoid_octagon",
+  "mass": 24.0,
+  "Iz": 1.85,
+  "com": [
+    0.0,
+    0.02
+  ],
+  "table_size": 6.0,
+  "hull_radius": 0.42,
+  "linear_damping": 0.04,
+  "rotational_damping": 0.02,
+  "control_dt": 0.1,
+  "sim_dt": 0.02,
+  "notes": "UK compressed-air testbed class (~24 kg, 8 solenoids). F_max=0.7 N is a typical starting guess \u2014 calibrate with a scale (docs/LAB.md). COM y-offset is intentional so students see coupling.",
+  "thrusters": [
+    {
+      "id": "T1",
+      "position": [
+        0.38,
+        0.11
+      ],
+      "force_direction": [
+        -1.0,
+        0.0
+      ],
+      "F_max": 0.7,
+      "type": "binary_solenoid",
+      "min_pulse_ms": 30,
+      "deadman_ms": 100
+    },
+    {
+      "id": "T2",
+      "position": [
+        0.38,
+        -0.11
+      ],
+      "force_direction": [
+        -1.0,
+        0.0
+      ],
+      "F_max": 0.7,
+      "type": "binary_solenoid",
+      "min_pulse_ms": 30,
+      "deadman_ms": 100
+    },
+    {
+      "id": "T3",
+      "position": [
+        -0.38,
+        0.11
+      ],
+      "force_direction": [
+        1.0,
+        0.0
+      ],
+      "F_max": 0.7,
+      "type": "binary_solenoid",
+      "min_pulse_ms": 30,
+      "deadman_ms": 100
+    },
+    {
+      "id": "T4",
+      "position": [
+        -0.38,
+        -0.11
+      ],
+      "force_direction": [
+        1.0,
+        0.0
+      ],
+      "F_max": 0.7,
+      "type": "binary_solenoid",
+      "min_pulse_ms": 30,
+      "deadman_ms": 100
+    },
+    {
+      "id": "T5",
+      "position": [
+        0.11,
+        0.38
+      ],
+      "force_direction": [
+        0.0,
+        -1.0
+      ],
+      "F_max": 0.7,
+      "type": "binary_solenoid",
+      "min_pulse_ms": 30,
+      "deadman_ms": 100
+    },
+    {
+      "id": "T6",
+      "position": [
+        -0.11,
+        0.38
+      ],
+      "force_direction": [
+        0.0,
+        -1.0
+      ],
+      "F_max": 0.7,
+      "type": "binary_solenoid",
+      "min_pulse_ms": 30,
+      "deadman_ms": 100
+    },
+    {
+      "id": "T7",
+      "position": [
+        0.11,
+        -0.38
+      ],
+      "force_direction": [
+        0.0,
+        1.0
+      ],
+      "F_max": 0.7,
+      "type": "binary_solenoid",
+      "min_pulse_ms": 30,
+      "deadman_ms": 100
+    },
+    {
+      "id": "T8",
+      "position": [
+        -0.11,
+        -0.38
+      ],
+      "force_direction": [
+        0.0,
+        1.0
+      ],
+      "F_max": 0.7,
+      "type": "binary_solenoid",
+      "min_pulse_ms": 30,
+      "deadman_ms": 100
+    }
+  ],
+  "mocap": {
+    "enabled": false,
+    "rigid_body_id": 1,
+    "endpoint": "http://127.0.0.1:8080/pose",
+    "timeout_s": 0.05
+  }
+}
