@@ -4,6 +4,8 @@ Planar (x, y, yaw) GNC for cubesats on air-bearing tables. You describe **your**
 
 This is laboratory / teaching software. **It is not flight software.** SI units everywhere.
 
+Instructors: [docs/INSTRUCTOR.md](docs/INSTRUCTOR.md) (one-page TA/PI brief, ~20 min; print [docs/instructor.pdf](docs/instructor.pdf)).
+
 ![Point-to-point on an 8-solenoid example](docs/assets/solenoid_demo.png)
 ![Same mission, solenoids vs four-fan plus](docs/assets/compare_actuators.png)
 
@@ -27,6 +29,7 @@ make test
 airbearing run --vehicle examples/vehicles/fan_plus.json
 airbearing report runs/<id>
 airbearing check examples/vehicles/fan_plus.json
+airbearing compare --sim examples/logs/sim.csv --real examples/logs/hardware.csv
 ```
 
 `runs/<id>/` contains `log.csv`, `summary.json`, a methods-style `methods.txt`, and plots.
@@ -82,8 +85,8 @@ airbearing report runs/<id>                 # settling, ∫|u|, solver p50/p95, 
 airbearing identify runs/<id>/log.csv --vehicle vehicles/mine.json \
   --out vehicles/mine_identified.json --residual vehicles/mine_residual.png
 
-# Sim vs a hardware log or mocap replay CSV
-airbearing compare --sim runs/<sim>/log.csv --real labs/data/example_mocap.csv --mismatch-delay 1
+# Sim vs a hardware-shaped log (shipped; synthetic mocap noise — works offline)
+airbearing compare --sim examples/logs/sim.csv --real examples/logs/hardware.csv
 ```
 
 Open-loop ID logs: PRBS or chirp (`airbearing.identify.synthesize_excitation_log`), or reuse a closed-loop `log.csv`.
@@ -120,6 +123,7 @@ airbearing run --vehicle vehicles/mine.json --armed --port /dev/ttyUSB0 --dashbo
 
 ## Docs
 
+- [docs/INSTRUCTOR.md](docs/INSTRUCTOR.md) — one-page TA/PI brief ([PDF](docs/instructor.pdf))
 - [ARCHITECTURE.md](ARCHITECTURE.md) — one-pager
 - [docs/YOUR_SATELLITE.md](docs/YOUR_SATELLITE.md) — JSON field guide
 - [docs/MATH.md](docs/MATH.md) — 3-DOF, MPC, allocator

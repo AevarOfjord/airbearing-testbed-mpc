@@ -5,7 +5,7 @@ endif
 PIP ?= $(PYTHON) -m pip
 VEHICLE ?= examples/vehicles/fan_plus.json
 
-.PHONY: install test run view edit-vehicle new-vehicle check lab1 lab2 lab3 lab4 identify compare report compare-actuators assets
+.PHONY: install test run view edit-vehicle new-vehicle check lab1 lab2 lab3 lab4 identify compare report compare-actuators assets golden-logs instructor
 
 install:
 	$(PIP) install -e ".[dev,viz]"
@@ -56,3 +56,9 @@ assets:
 	$(PYTHON) -m airbearing run --vehicle examples/vehicles/solenoid_octagon.json --assets
 	$(PYTHON) -m airbearing compare-actuators --assets
 	$(PYTHON) -m airbearing view --record --duration 3 --vehicle examples/vehicles/fan_plus.json
+
+golden-logs:
+	$(PYTHON) scripts/make_golden_logs.py
+
+instructor:
+	$(PYTHON) scripts/make_instructor_packet.py
