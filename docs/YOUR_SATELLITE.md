@@ -1,6 +1,6 @@
 # Bring your own satellite
 
-Edit JSON, not Python. Schema: `schemas/satellite_spec.schema.json` (`additionalProperties: false`).
+Edit JSON, not Python. Schema: `schemas/vehicle.schema.json` (`additionalProperties: false`).
 
 ## Minimum file
 
@@ -26,7 +26,7 @@ Edit JSON, not Python. Schema: `schemas/satellite_spec.schema.json` (`additional
 }
 ```
 
-Copy `vehicles/YOUR_SATELLITE.json.example` or run `python -m airbearing new-vehicle`.
+Open the visual builder (`python -m airbearing edit-vehicle`), or copy `vehicles/YOUR_SATELLITE.json.example`, or run `python -m airbearing new-vehicle`.
 
 ## Fields
 

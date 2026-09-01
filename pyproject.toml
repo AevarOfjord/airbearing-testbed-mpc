@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "airbearing"
-version = "3.0.0"
-description = "Planar air-bearing satellite GNC kit: JSON vehicles, linear MPC, any thruster count. Not flight software."
+version = "4.0.0"
+description = "Planar air-bearing satellite GNC kit: visual vehicle builder, JSON vehicles, linear MPC. Not flight software."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
@@ -28,6 +28,7 @@ dependencies = [
   "matplotlib>=3.8",
   "jsonschema>=4.20",
   "Pillow>=10.0",
+  "pygame>=2.5",
 ]
 
 [project.optional-dependencies]

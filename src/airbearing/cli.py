@@ -1,4 +1,4 @@
-"""Student-facing CLI: run, compare-actuators, new-vehicle."""
+"""Student-facing CLI: edit-vehicle, run, view, identify, labs."""
 
 from __future__ import annotations
 
@@ -41,6 +41,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     if args.armed and not args.port and spec.mocap.enabled is False:
         print("refusing: --armed requires --port and working telemetry (set mocap.enabled)", file=sys.stderr)
         return 2
+    dash = None
     rt = Runtime(
         spec,
         ctrl,
@@ -49,8 +50,19 @@ def cmd_run(args: argparse.Namespace) -> int:
         port=args.port,
         round_binary=args.round_binary,
         runs_root=Path(args.runs),
+        replay=getattr(args, "replay", None),
     )
-    result = rt.run()
+    if getattr(args, "dashboard", False):
+        from airbearing.dashboard import Dashboard
+        dash = Dashboard(rt.status_snapshot, lambda: setattr(rt, "estop", True),
+                         port=int(getattr(args, "dashboard_port", 8765)))
+        url = dash.start()
+        print(f"dashboard {url}  (POST /estop)")
+    try:
+        result = rt.run()
+    finally:
+        if dash is not None:
+            dash.stop()
     plot_trajectory(spec, result, result.run_dir / "trajectory.png")
     gif = result.run_dir / "animation.gif"
     try:
@@ -211,6 +223,93 @@ def cmd_new_vehicle(args: argparse.Namespace) -> int:
     return 0
 
 
+
+def cmd_check(args: argparse.Namespace) -> int:
+    from airbearing.vehicle_editor import one_screen_report, plot_layout
+
+    spec = load_vehicle(args.vehicle)
+    print(one_screen_report(spec), end="")
+    if args.png:
+        plot_layout(spec, Path(args.png))
+        print(f"layout png: {args.png}")
+    report = controllability_report(spec)
+    return 0 if report["full"] else 2
+
+
+def cmd_edit(args: argparse.Namespace) -> int:
+    from airbearing.vehicle_editor import run_editor
+
+    draft = run_editor(args.vehicle, headless=args.headless, save_png=args.png)
+    print(f"draft {draft.data['name']} n={len(draft.data['thrusters'])}")
+    if draft.path:
+        print(f"file {draft.path}")
+    return 0
+
+
+def cmd_view(args: argparse.Namespace) -> int:
+    from airbearing.dashboard import Dashboard
+    from airbearing.live_twin import view
+
+    spec = load_vehicle(args.vehicle)
+    dash = None
+    # Dashboard wraps a runtime created inside view; for --dashboard on view we
+    # start a server bound to a holder updated by a closure after first tick.
+    holder = {"rt": None}
+
+    def status():
+        rt = holder["rt"]
+        return rt.status_snapshot() if rt is not None else {"estop": False, "armed": False}
+
+    def estop():
+        rt = holder["rt"]
+        if rt is not None:
+            rt.estop = True
+
+    if args.dashboard:
+        dash = Dashboard(status, estop, port=args.dashboard_port)
+        print("dashboard", dash.start())
+    try:
+        from airbearing.control.mpc import LinearMPC
+        from airbearing.missions import point_to_point
+        from airbearing.runtime import Runtime
+        from airbearing.live_twin import view as _view
+
+        png = _view(
+            spec,
+            record=args.record,
+            out_png=Path(args.out),
+            out_gif=Path(args.gif),
+            duration=args.duration,
+            replay=args.replay,
+            runs_root=Path(args.runs) / "view",
+        )
+        if png:
+            print(f"wrote {png}")
+    finally:
+        if dash is not None:
+            dash.stop()
+    return 0
+
+
+def cmd_identify(args: argparse.Namespace) -> int:
+    from airbearing.identify import identify_from_log
+    from airbearing.spec import vehicles_dir
+
+    out = args.out
+    if out is None:
+        name = Path(args.vehicle).stem + "_identified"
+        out = str(vehicles_dir() / f"{name}.json")
+    r = identify_from_log(args.log, args.vehicle, out=out)
+    print(json.dumps({k: r[k] for k in ("mass", "Iz", "F_max", "rmse", "success", "out") if k in r}, indent=2))
+    return 0 if r["success"] else 1
+
+
+def cmd_lab(args: argparse.Namespace) -> int:
+    from airbearing.labs import run_lab
+
+    return run_lab(args.n, runs=Path(args.runs))
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="airbearing",
@@ -247,16 +346,44 @@ def build_parser() -> argparse.ArgumentParser:
     n.add_argument("--bidirectional", action=argparse.BooleanOptionalAction, default=None)
     n.set_defaults(func=cmd_new_vehicle)
 
-    v = sub.add_parser("check", help="validate a vehicle JSON and print controllability")
+    r.add_argument("--dashboard", action="store_true", help="local status page + e-stop (stdlib http)")
+    r.add_argument("--dashboard-port", type=int, default=8765)
+    r.add_argument("--replay", default=None, help="recorded mocap CSV (labs/data/example_mocap.csv)")
+
+    v = sub.add_parser("check", help="one-screen vehicle report + optional layout PNG")
     v.add_argument("vehicle")
-
-    def cmd_check(args):
-        spec = load_vehicle(args.vehicle)
-        report = controllability_report(spec)
-        print(json.dumps({k: report[k] for k in ("full", "rank_B", "reachable", "warning", "n_thrusters")}, indent=2))
-        return 0 if report["full"] else 2
-
+    v.add_argument("--png", default=None, help="write top-down layout PNG")
     v.set_defaults(func=cmd_check)
+
+    e = sub.add_parser("edit-vehicle", help="pygame table: click to model a satellite, save JSON")
+    e.add_argument("--vehicle", default=None)
+    e.add_argument("--headless", action="store_true")
+    e.add_argument("--png", default=None)
+    e.set_defaults(func=cmd_edit)
+
+    vw = sub.add_parser("view", help="live top-down twin (pygame) / --record headless PNG")
+    vw.add_argument("--vehicle", default=str(REPO / "vehicles" / "uk_solenoid_octagon.json"))
+    vw.add_argument("--record", action="store_true")
+    vw.add_argument("--duration", type=float, default=None)
+    vw.add_argument("--out", default=str(REPO / "docs" / "assets" / "live_twin.png"))
+    vw.add_argument("--gif", default=str(REPO / "docs" / "assets" / "live_twin.gif"))
+    vw.add_argument("--replay", default=None)
+    vw.add_argument("--dashboard", action="store_true")
+    vw.add_argument("--dashboard-port", type=int, default=8765)
+    vw.add_argument("--runs", default="runs")
+    vw.set_defaults(func=cmd_view)
+
+    ident = sub.add_parser("identify", help="fit mass/Iz/F_max from runs/<id>/log.csv")
+    ident.add_argument("log")
+    ident.add_argument("--vehicle", default=str(REPO / "vehicles" / "uk_solenoid_octagon.json"))
+    ident.add_argument("--out", default=None)
+    ident.set_defaults(func=cmd_identify)
+
+    lab = sub.add_parser("lab", help="run a numbered lab (1 editor, 2 controllers, 3 ID, 4 actuators)")
+    lab.add_argument("n", type=int, choices=[1, 2, 3, 4])
+    lab.add_argument("--runs", default="runs")
+    lab.set_defaults(func=cmd_lab)
+
     return p
 
 

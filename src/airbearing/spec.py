@@ -10,16 +10,29 @@ from typing import Any, Literal
 import jsonschema
 import numpy as np
 
+def repo_root() -> Path:
+    here = Path(__file__).resolve()
+    for cand in (here.parents[2], Path.cwd()):
+        if (cand / "vehicles").is_dir() and (cand / "schemas").is_dir():
+            return cand
+    return here.parents[2]
+
+
 def _schema_file() -> Path:
     here = Path(__file__).resolve()
+    root = repo_root()
     candidates = [
+        root / "schemas" / "vehicle.schema.json",
+        root / "schemas" / "satellite_spec.schema.json",
+        here.parents[2] / "schemas" / "vehicle.schema.json",
         here.parents[2] / "schemas" / "satellite_spec.schema.json",
+        Path.cwd() / "schemas" / "vehicle.schema.json",
         Path.cwd() / "schemas" / "satellite_spec.schema.json",
     ]
     for c in candidates:
         if c.is_file():
             return c
-    raise FileNotFoundError("satellite_spec.schema.json not found; run from the repo root")
+    raise FileNotFoundError("vehicle.schema.json not found; run from the repo root")
 
 
 ActuatorType = Literal["binary_solenoid", "pwm_fan", "continuous"]
@@ -209,6 +222,7 @@ def controllability_report(spec: SatelliteSpec, eps: float = 1e-3) -> dict[str, 
     labels = ["Fx", "Fy", "Mz"]
     reachable: dict[str, bool] = {}
     details: dict[str, str] = {}
+    limits: dict[str, float] = {}
     for i, lab in enumerate(labels):
         for sign, tag in ((1.0, "+"), (-1.0, "-")):
             u = cp.Variable(n)
@@ -226,10 +240,14 @@ def controllability_report(spec: SatelliteSpec, eps: float = 1e-3) -> dict[str, 
             ok = val > eps
             reachable[f"{tag}{lab}"] = ok
             details[f"{tag}{lab}"] = f"max {tag}{lab}={val:.4g} {'OK' if ok else 'FAIL'}"
+            limits[f"{tag}{lab}"] = val
+    radial = plus_frame_radial_warning(spec)
     full = all(reachable.values())
     rank = int(np.linalg.matrix_rank(B, tol=1e-8))
     warning = None
-    if not full:
+    if radial:
+        warning = radial
+    elif not full:
         warning = (
             "Not fully controllable with the current actuator cone. "
             "Three unidirectional thrusters cannot positively span R^3; "
@@ -240,6 +258,120 @@ def controllability_report(spec: SatelliteSpec, eps: float = 1e-3) -> dict[str, 
         "rank_B": rank,
         "reachable": reachable,
         "details": details,
+        "limits": limits,
         "n_thrusters": n,
         "warning": warning,
+        "radial_plus": bool(radial),
     }
+
+
+def plus_frame_radial_warning(spec: SatelliteSpec, ang_tol: float = 0.18) -> str | None:
+    """Plus-frame fans that blow through the COM produce Mz ≡ 0."""
+    if spec.n_thrusters != 4:
+        return None
+    axes = 0
+    radial = 0
+    mz = spec.allocation_matrix()[2]
+    for t in spec.thrusters:
+        r = t.position - spec.com
+        rn = float(np.linalg.norm(r))
+        if rn < 1e-6:
+            continue
+        ru = r / rn
+        # on a body axis?
+        if min(abs(ru[0]), abs(ru[1])) < 0.25:
+            axes += 1
+        align = abs(float(np.dot(ru, t.force_direction)))
+        if align > np.cos(ang_tol):
+            radial += 1
+    if axes >= 3 and radial >= 3 and float(np.max(np.abs(mz))) < 1e-6 * max(t.F_max for t in spec.thrusters):
+        return (
+            "Plus-frame fans are radial (through COM): Mz ≡ 0. "
+            "Rotate each jet 90° (tangent to the arm) or offset the nozzle."
+        )
+    if float(np.max(np.abs(mz))) < 1e-8:
+        return "Allocation Mz column is structurally zero (jets through COM)."
+    return None
+
+
+def spec_to_dict(spec: SatelliteSpec) -> dict[str, Any]:
+    """Serialize a spec back to the student JSON shape (no Python constants)."""
+    def tdict(t: Thruster) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "id": t.id,
+            "position": [float(t.position[0]), float(t.position[1])],
+            "force_direction": [float(t.force_direction[0]), float(t.force_direction[1])],
+            "F_max": float(t.F_max),
+            "type": t.type,
+        }
+        if t.type == "binary_solenoid":
+            d["min_pulse_ms"] = float(t.min_pulse_ms)
+            d["deadman_ms"] = float(t.deadman_ms)
+        elif t.type == "pwm_fan":
+            d["tau"] = float(t.tau)
+            d["bidirectional"] = bool(t.bidirectional)
+            d["duty_min"] = float(t.duty_min)
+            d["duty_max"] = float(t.duty_max)
+            d["deadman_ms"] = float(t.deadman_ms)
+        else:
+            d["bidirectional"] = True
+        return d
+
+    data: dict[str, Any] = {
+        "name": spec.name,
+        "mass": float(spec.mass),
+        "Iz": float(spec.Iz),
+        "com": [float(spec.com[0]), float(spec.com[1])],
+        "table_size": float(spec.table_size),
+        "hull_radius": float(spec.hull_radius),
+        "linear_damping": float(spec.linear_damping),
+        "rotational_damping": float(spec.rotational_damping),
+        "control_dt": float(spec.control_dt),
+        "sim_dt": float(spec.sim_dt),
+        "notes": spec.notes,
+        "thrusters": [tdict(t) for t in spec.thrusters],
+    }
+    if spec.reaction_wheel is not None:
+        rw = spec.reaction_wheel
+        data["reaction_wheel"] = {
+            "inertia": rw.inertia,
+            "max_torque": rw.max_torque,
+            "max_momentum": rw.max_momentum,
+            "initial_momentum": rw.initial_momentum,
+            "sim_only": rw.sim_only,
+        }
+    if spec.mocap and spec.mocap.enabled:
+        data["mocap"] = {
+            "enabled": spec.mocap.enabled,
+            "rigid_body_id": spec.mocap.rigid_body_id,
+            "endpoint": spec.mocap.endpoint,
+            "timeout_s": spec.mocap.timeout_s,
+        }
+    return data
+
+
+def vehicles_dir() -> Path:
+    return repo_root() / "vehicles"
+
+
+def assert_vehicle_save_path(path: Path, *, allow_any: bool = False) -> Path:
+    path = Path(path)
+    if allow_any:
+        return path
+    root = vehicles_dir().resolve()
+    try:
+        path.resolve().relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"vehicle JSON must be saved under {root}") from exc
+    if path.suffix != ".json":
+        raise ValueError("vehicle file must end in .json")
+    return path
+
+
+def save_vehicle(spec: SatelliteSpec | dict[str, Any], path: str | Path, *, allow_any: bool = False) -> Path:
+    path = assert_vehicle_save_path(Path(path), allow_any=allow_any)
+    data = spec_to_dict(spec) if isinstance(spec, SatelliteSpec) else dict(spec)
+    validate_dict(data)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2) + "\n")
+    return path

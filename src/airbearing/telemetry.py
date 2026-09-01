@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 import numpy as np
@@ -60,3 +60,49 @@ class HttpMocap:
             return st, True
         except Exception:
             return None, False
+
+
+
+@dataclass
+class CsvReplay:
+    """Recorded mocap: sequential 6-state rows from labs/data/example_mocap.csv."""
+
+    path: str
+    _rows: list = field(default_factory=list, init=False)
+    _i: int = field(default=0, init=False)
+
+    def __post_init__(self) -> None:
+        import csv
+        from pathlib import Path
+
+        rows = []
+        with Path(self.path).open(newline="") as f:
+            r = csv.DictReader(f)
+            for d in r:
+                st = np.array(
+                    [
+                        float(d["x"]),
+                        float(d["y"]),
+                        float(d["yaw"]),
+                        float(d.get("vx") or 0.0),
+                        float(d.get("vy") or 0.0),
+                        float(d.get("omega") or 0.0),
+                    ],
+                    dtype=float,
+                )
+                rows.append(st)
+        if not rows:
+            raise ValueError(f"empty mocap csv: {self.path}")
+        self._rows = rows
+        self._i = 0
+
+    def read(self) -> tuple[np.ndarray | None, bool]:
+        if self._i >= len(self._rows):
+            return self._rows[-1].copy(), True
+        z = self._rows[self._i].copy()
+        self._i += 1
+        return z, True
+
+    @property
+    def n(self) -> int:
+        return len(self._rows)

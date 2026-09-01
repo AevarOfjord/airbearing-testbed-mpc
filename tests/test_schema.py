@@ -46,3 +46,9 @@ def test_uk_is_eight_solenoids():
 def test_micro_is_three():
     spec = load_vehicle(REPO / "vehicles" / "micro_3thruster.json")
     assert spec.n_thrusters == 3
+
+
+def test_vehicle_schema_is_sot():
+    assert (REPO / "schemas" / "vehicle.schema.json").is_file()
+    from airbearing.spec import _schema_file
+    assert _schema_file().name == "vehicle.schema.json"

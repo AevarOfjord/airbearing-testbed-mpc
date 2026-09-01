@@ -1,7 +1,7 @@
 # Architecture (one page)
 
 ```
-                 vehicles/*.json  ──►  SatelliteSpec (schema, additionalProperties: false)
+                 vehicles/*.json  ──►  SatelliteSpec (schemas/vehicle.schema.json)
                                               │
    pose (sim plant or mocap) ──► Controller ──┤
                          MPC / PD / LQR       │  body wrench [Fx, Fy, Mz]
@@ -25,3 +25,7 @@
 **Firmware** (optional): `firmware/solenoid_gateway` (`CMD:<bitmask>:<duration_ms>`) and `firmware/fan_pwm_gateway` (`PWM:d0,d1,…`) with a 100 ms deadman.
 
 **Out of scope:** Windows COM ports, vendor optimizer DLLs, NatNet internals, CAD, fifteen handoff PDFs.
+
+**Visual builder** (`python -m airbearing edit-vehicle`): pygame table; save is restricted to `vehicles/`.
+**Live twin** (`view`): same `Runtime`, keyboard teleop, MPC handover, `--record` PNG.
+**Identify** (`identify`): mass / Iz / F_max from `log.csv`; layout stays in JSON.
