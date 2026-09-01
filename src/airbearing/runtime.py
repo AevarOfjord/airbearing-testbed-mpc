@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import json
 import time
 from dataclasses import dataclass, field
@@ -17,6 +16,8 @@ from airbearing.hardware import NullGateway, open_gateway
 from airbearing.missions import Mission
 from airbearing.safety import SafetySupervisor
 from airbearing.spec import SatelliteSpec
+from airbearing.logschema import SCHEMA_VERSION, UNITS, run_fieldnames, write_run_csv
+from airbearing.report import build_summary, write_summary
 from airbearing.telemetry import CsvReplay, HttpMocap, PoseSource, SimulatedMocap
 
 
@@ -45,6 +46,9 @@ class RunResult:
     final_error: float = 1e9
     aborted: bool = False
     abort_reason: str = ""
+    wall_s: float = 0.0
+    controller_name: str = ""
+    seed: int | None = None
 
 
 def _new_run_dir(root: Path, name: str) -> Path:
@@ -68,6 +72,7 @@ class Runtime:
         runs_root: Path | None = None,
         use_rw: bool = True,
         replay: str | Path | None = None,
+        seed: int | None = None,
     ):
         self.spec = spec
         self.controller = controller
@@ -102,6 +107,9 @@ class Runtime:
         self._wall0 = 0.0
         self._last_pose = np.zeros(6)
         self._last_cmd = np.zeros(spec.n_thrusters)
+        self.seed = seed
+        self.result.seed = seed
+        self.result.controller_name = getattr(controller, "name", type(controller).__name__)
 
     def status_snapshot(self) -> dict:
         pose = self._last_pose
@@ -120,6 +128,8 @@ class Runtime:
 
     def _write_meta(self) -> None:
         meta = {
+            "schema_version": SCHEMA_VERSION,
+            "units": UNITS,
             "vehicle": self.spec.name,
             "controller": getattr(self.controller, "name", type(self.controller).__name__),
             "mission": self.mission.name,
@@ -127,35 +137,29 @@ class Runtime:
             "not_flight_software": True,
             "notes": self.spec.notes,
             "replay": str(self.replay_path) if self.replay_path else None,
+            "seed": self.seed,
         }
         (self.result.run_dir / "meta.json").write_text(json.dumps(meta, indent=2))
 
     def _dump_csv(self) -> None:
         path = self.result.run_dir / "log.csv"
-        fieldnames = [
-            "t", "x", "y", "yaw", "vx", "vy", "omega",
-            "ref_x", "ref_y", "ref_yaw",
-            "Fx", "Fy", "Mz", "Fx_ach", "Fy_ach", "Mz_ach",
-            "mpc_ms", "alloc_ms", "deadline_miss", "safety", "status",
-        ]
-        fieldnames += [f"u{i}" for i in range(self.spec.n_thrusters)]
-        with path.open("w", newline="") as f:
-            w = csv.DictWriter(f, fieldnames=fieldnames)
-            w.writeheader()
-            for row in self.result.logs:
-                d = {
-                    "t": row.t,
-                    "x": row.state[0], "y": row.state[1], "yaw": row.state[2],
-                    "vx": row.state[3], "vy": row.state[4], "omega": row.state[5],
-                    "ref_x": row.ref[0], "ref_y": row.ref[1], "ref_yaw": row.ref[2],
-                    "Fx": row.wrench_cmd[0], "Fy": row.wrench_cmd[1], "Mz": row.wrench_cmd[2],
-                    "Fx_ach": row.wrench_ach[0], "Fy_ach": row.wrench_ach[1], "Mz_ach": row.wrench_ach[2],
-                    "mpc_ms": row.mpc_ms, "alloc_ms": row.alloc_ms,
-                    "deadline_miss": row.deadline_miss, "safety": row.safety, "status": row.status,
-                }
-                for i, c in enumerate(row.cmd):
-                    d[f"u{i}"] = c
-                w.writerow(d)
+        fieldnames = run_fieldnames(self.spec.n_thrusters)
+        rows = []
+        for row in self.result.logs:
+            d = {
+                "t": row.t,
+                "x": row.state[0], "y": row.state[1], "yaw": row.state[2],
+                "vx": row.state[3], "vy": row.state[4], "omega": row.state[5],
+                "ref_x": row.ref[0], "ref_y": row.ref[1], "ref_yaw": row.ref[2],
+                "Fx": row.wrench_cmd[0], "Fy": row.wrench_cmd[1], "Mz": row.wrench_cmd[2],
+                "Fx_ach": row.wrench_ach[0], "Fy_ach": row.wrench_ach[1], "Mz_ach": row.wrench_ach[2],
+                "mpc_ms": row.mpc_ms, "alloc_ms": row.alloc_ms,
+                "deadline_miss": row.deadline_miss, "safety": row.safety, "status": row.status,
+            }
+            for i, c in enumerate(row.cmd):
+                d[f"u{i}"] = c
+            rows.append(d)
+        write_run_csv(path, fieldnames, rows)
 
     def begin(self) -> None:
         if self.real and not self.armed:
@@ -260,24 +264,30 @@ class Runtime:
             if err < 2.5 * self.mission.pos_tol and speed < 0.08:
                 success = True
         mean_ms = float(np.mean([r.mpc_ms + r.alloc_ms for r in logs])) if logs else 0.0
+        wall = time.perf_counter() - self._wall0 if self._wall0 else 0.0
         self.result.success = success
         self.result.deadline_misses = self._deadline_misses
         self.result.mean_solver_ms = mean_ms
         self.result.final_error = err
         self.result.aborted = self._aborted
         self.result.abort_reason = self._abort_reason
+        self.result.wall_s = wall
         self._dump_csv()
-        summary = {
-            "success": success,
-            "final_error_m": err,
-            "deadline_misses": self._deadline_misses,
-            "mean_solver_ms": mean_ms,
-            "steps": len(logs),
-            "wall_s": time.perf_counter() - self._wall0 if self._wall0 else 0.0,
-            "aborted": self._aborted,
-            "abort_reason": self._abort_reason,
-        }
-        (self.result.run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
+        summary = build_summary(
+            spec=self.spec,
+            result=self.result,
+            mission=self.mission,
+            vehicle_path=self.spec.source_path,
+            seed=self.seed,
+            extra={
+                "mean_solver_ms": mean_ms,
+                "wall_s": wall,
+                "controller": getattr(self.controller, "name", type(self.controller).__name__),
+                "armed": self.armed,
+                "replay": str(self.replay_path) if self.replay_path else None,
+            },
+        )
+        write_summary(self.result.run_dir, summary)
         return self.result
 
     def run(self) -> RunResult:

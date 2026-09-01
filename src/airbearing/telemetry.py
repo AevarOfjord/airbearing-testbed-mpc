@@ -77,7 +77,8 @@ class CsvReplay:
 
         rows = []
         with Path(self.path).open(newline="") as f:
-            r = csv.DictReader(f)
+            lines = [ln for ln in f if not ln.startswith("#")]
+            r = csv.DictReader(lines)
             for d in r:
                 st = np.array(
                     [

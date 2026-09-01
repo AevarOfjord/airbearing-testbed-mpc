@@ -15,7 +15,14 @@ from airbearing.control.mpc import LinearMPC
 from airbearing.control.pd import PDController
 from airbearing.missions import point_to_point
 from airbearing.runtime import Runtime
-from airbearing.spec import controllability_report, load_vehicle, spec_from_dict
+from airbearing.spec import (
+    controllability_report,
+    default_vehicle,
+    load_vehicle,
+    shipped_vehicle,
+    spec_from_dict,
+    vehicles_dir,
+)
 from airbearing.viz import animate, plot_compare, plot_trajectory
 
 REPO = Path(__file__).resolve().parents[2]
@@ -78,14 +85,16 @@ def cmd_run(args: argparse.Namespace) -> int:
     print(f"run dir: {result.run_dir}")
     print(f"success={result.success}  final_error={result.final_error:.3f} m  "
           f"solver={result.mean_solver_ms:.1f} ms  deadline_misses={result.deadline_misses}")
+    from airbearing.report import print_report
+    print(print_report(result.run_dir), end="")
     return 0 if result.success else 1
 
 
 def cmd_compare(args: argparse.Namespace) -> int:
     pairs = []
     vehicles = [
-        REPO / "vehicles" / "uk_solenoid_octagon.json",
-        REPO / "vehicles" / "fan_quadrotor_plus.json",
+        shipped_vehicle("solenoid_octagon"),
+        shipped_vehicle("fan_plus"),
     ]
     out_root = Path(args.runs) / "compare"
     out_root.mkdir(parents=True, exist_ok=True)
@@ -190,7 +199,7 @@ def cmd_new_vehicle(args: argparse.Namespace) -> int:
         table = args.table or 2.0
         F = args.fmax or 0.3
         bidir = args.bidirectional if args.bidirectional is not None else True
-        out = Path(args.out or REPO / "vehicles" / f"{name}.json")
+        out = Path(args.out or vehicles_dir() / f"{name}.json")
 
     radius = args.radius or 0.18
     Iz = mass * (radius ** 2) * 0.6
@@ -299,8 +308,16 @@ def cmd_identify(args: argparse.Namespace) -> int:
     if out is None:
         name = Path(args.vehicle).stem + "_identified"
         out = str(vehicles_dir() / f"{name}.json")
-    r = identify_from_log(args.log, args.vehicle, out=out)
-    print(json.dumps({k: r[k] for k in ("mass", "Iz", "F_max", "rmse", "success", "out") if k in r}, indent=2))
+    r = identify_from_log(
+        args.log,
+        args.vehicle,
+        out=out,
+        mode=getattr(args, "mode", "fmax_scale"),
+        delay_steps=getattr(args, "delay_steps", "auto"),
+        residual_png=getattr(args, "residual", None),
+    )
+    keys = ("mass", "Iz", "F_max", "F_max_scale", "delay_steps", "rmse", "success", "out", "residual_png")
+    print(json.dumps({k: r[k] for k in keys if k in r}, indent=2))
     return 0 if r["success"] else 1
 
 
@@ -308,6 +325,32 @@ def cmd_lab(args: argparse.Namespace) -> int:
     from airbearing.labs import run_lab
 
     return run_lab(args.n, runs=Path(args.runs))
+
+
+
+def cmd_report(args: argparse.Namespace) -> int:
+    from airbearing.report import print_report
+
+    print(print_report(args.run), end="")
+    return 0
+
+
+def cmd_compare_logs(args: argparse.Namespace) -> int:
+    from airbearing.compare import compare_logs, format_compare
+
+    rep = compare_logs(
+        args.sim,
+        args.real,
+        delay_steps=args.delay_steps,
+        mismatch_delay=args.mismatch_delay,
+    )
+    print(format_compare(rep), end="")
+    dest = Path(args.out) if args.out else None
+    if dest:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(json.dumps(rep, indent=2) + "\n")
+        print(f"wrote {dest}")
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -318,7 +361,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     r = sub.add_parser("run", help="simulate (default) or drive hardware with --armed")
-    r.add_argument("--vehicle", default=str(REPO / "vehicles" / "uk_solenoid_octagon.json"))
+    r.add_argument("--vehicle", default=str(default_vehicle()))
     r.add_argument("--controller", default="mpc", choices=["mpc", "pd", "lqr"])
     r.add_argument("--runs", default="runs")
     r.add_argument("--duration", type=float, default=None)
@@ -362,7 +405,7 @@ def build_parser() -> argparse.ArgumentParser:
     e.set_defaults(func=cmd_edit)
 
     vw = sub.add_parser("view", help="live top-down twin (pygame) / --record headless PNG")
-    vw.add_argument("--vehicle", default=str(REPO / "vehicles" / "uk_solenoid_octagon.json"))
+    vw.add_argument("--vehicle", default=str(default_vehicle()))
     vw.add_argument("--record", action="store_true")
     vw.add_argument("--duration", type=float, default=None)
     vw.add_argument("--out", default=str(REPO / "docs" / "assets" / "live_twin.png"))
@@ -375,14 +418,30 @@ def build_parser() -> argparse.ArgumentParser:
 
     ident = sub.add_parser("identify", help="fit mass/Iz/F_max from runs/<id>/log.csv")
     ident.add_argument("log")
-    ident.add_argument("--vehicle", default=str(REPO / "vehicles" / "uk_solenoid_octagon.json"))
+    ident.add_argument("--vehicle", default=str(default_vehicle()))
     ident.add_argument("--out", default=None)
+    ident.add_argument("--mode", default="fmax_scale", choices=["fmax_scale", "full"])
+    ident.add_argument("--delay-steps", default="auto", help="0, 1, 2, or auto")
+    ident.add_argument("--residual", default=None, help="write residual PNG")
     ident.set_defaults(func=cmd_identify)
 
     lab = sub.add_parser("lab", help="run a numbered lab (1 editor, 2 controllers, 3 ID, 4 actuators)")
     lab.add_argument("n", type=int, choices=[1, 2, 3, 4])
     lab.add_argument("--runs", default="runs")
     lab.set_defaults(func=cmd_lab)
+
+    rp = sub.add_parser("report", help="print methods-style table from runs/<id>/summary.json")
+    rp.add_argument("run", help="runs/<id> directory or summary.json")
+    rp.set_defaults(func=cmd_report)
+
+    cmp_ = sub.add_parser("compare", help="RMSE sim log vs hardware/replay log (SI)")
+    cmp_.add_argument("--sim", required=True)
+    cmp_.add_argument("--real", required=True)
+    cmp_.add_argument("--delay-steps", type=int, default=0)
+    cmp_.add_argument("--mismatch-delay", type=int, default=None,
+                      help="also report a labeled 1–2 step command-delay case")
+    cmp_.add_argument("--out", default=None)
+    cmp_.set_defaults(func=cmd_compare_logs)
 
     return p
 

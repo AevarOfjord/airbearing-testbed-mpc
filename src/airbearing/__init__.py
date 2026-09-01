@@ -1,6 +1,6 @@
-"""Planar air-bearing satellite GNC kit (Generation 4). Not flight software."""
+"""Planar (x, y, yaw) GNC for cubesats on air-bearing tables. Not flight software."""
 
-__version__ = "4.0.0"
+__version__ = "1.0.0"
 __author__ = "Ævar Öfjörð"
 
 from airbearing.spec import SatelliteSpec, load_vehicle

@@ -6,26 +6,26 @@ REPO = Path(__file__).resolve().parents[1]
 
 
 def test_octagon_full():
-    spec = load_vehicle(REPO / "vehicles" / "uk_solenoid_octagon.json")
+    spec = load_vehicle(REPO / "examples" / "vehicles" / "solenoid_octagon.json")
     r = controllability_report(spec)
     assert r["full"] is True
     assert r["rank_B"] == 3
 
 
 def test_fan_plus_full():
-    spec = load_vehicle(REPO / "vehicles" / "fan_quadrotor_plus.json")
+    spec = load_vehicle(REPO / "examples" / "vehicles" / "fan_plus.json")
     r = controllability_report(spec)
     assert r["full"] is True
 
 
 def test_hex_full():
-    spec = load_vehicle(REPO / "vehicles" / "fan_hex.json")
+    spec = load_vehicle(REPO / "examples" / "vehicles" / "fan_hex.json")
     r = controllability_report(spec)
     assert r["full"] is True
 
 
 def test_three_unidirectional_not_full():
-    spec = load_vehicle(REPO / "vehicles" / "micro_3thruster.json")
+    spec = load_vehicle(REPO / "examples" / "vehicles" / "micro_3thruster.json")
     r = controllability_report(spec)
     assert r["n_thrusters"] == 3
     assert r["full"] is False

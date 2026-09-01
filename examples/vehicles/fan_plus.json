@@ -1,5 +1,5 @@
 {
-  "name": "fan_quadrotor_plus",
+  "name": "fan_plus",
   "mass": 4.5,
   "Iz": 0.085,
   "com": [
@@ -12,7 +12,7 @@
   "rotational_damping": 0.015,
   "control_dt": 0.05,
   "sim_dt": 0.01,
-  "notes": "Cheap student build: four computer-fan thrusters in a plus layout, reversible by flipping polarity or using two fans per arm. Spin-up tau is a guess. Fans sit on a plus frame and blow tangent to each arm so yaw is controllable. Radial-through-COM mounts produce zero Mz.",
+  "notes": "Example: four computer-fan thrusters in a plus layout, bidirectional. Fans blow tangent to each arm so yaw is controllable. Radial-through-COM mounts produce zero Mz. F_max and tau are guesses \u2014 calibrate (docs/LAB.md).",
   "thrusters": [
     {
       "id": "F1",

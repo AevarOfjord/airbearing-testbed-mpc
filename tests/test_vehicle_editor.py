@@ -70,6 +70,6 @@ def test_headless_editor_no_display(tmp_path):
 
 def test_check_cli(tmp_path):
     png = tmp_path / "layout.png"
-    rc = main(["check", "vehicles/fan_quadrotor_plus.json", "--png", str(png)])
+    rc = main(["check", "examples/vehicles/fan_plus.json", "--png", str(png)])
     assert rc == 0
     assert png.is_file()

@@ -1,6 +1,6 @@
 cff-version: 1.2.0
-title: airbearing-testbed-mpc
-message: Planar air-bearing satellite GNC student kit (not flight software).
+title: airbearing
+message: If you use this software, please cite it using these metadata.
 type: software
 authors:
   - family-names: Öfjörð
@@ -8,4 +8,12 @@ authors:
     alias: AevarOfjord
 license: MIT
 repository-code: https://github.com/AevarOfjord/airbearing-testbed-mpc
-version: 4.0.0
+version: "1.0.0"
+abstract: >-
+  Planar (x, y, yaw) GNC for cubesats on air-bearing tables.
+  Vehicles are described in JSON. Not flight software.
+keywords:
+  - air-bearing
+  - cubesat
+  - MPC
+  - GNC

@@ -8,7 +8,7 @@ REPO = Path(__file__).resolve().parents[1]
 
 
 def test_null_telemetry_zeros_and_abort():
-    spec = load_vehicle(REPO / "vehicles" / "uk_solenoid_octagon.json")
+    spec = load_vehicle(REPO / "examples" / "vehicles" / "solenoid_octagon.json")
     sup = SafetySupervisor(spec)
     cmd = np.ones(spec.n_thrusters)
     last = None
@@ -20,7 +20,7 @@ def test_null_telemetry_zeros_and_abort():
 
 
 def test_table_edge_abort():
-    spec = load_vehicle(REPO / "vehicles" / "fan_quadrotor_plus.json")
+    spec = load_vehicle(REPO / "examples" / "vehicles" / "fan_plus.json")
     sup = SafetySupervisor(spec)
     st = np.array([spec.table_size, 0, 0, 0, 0, 0], dtype=float)
     d = sup.review(np.ones(4), st, True, spec.control_dt)
@@ -29,7 +29,7 @@ def test_table_edge_abort():
 
 
 def test_deadman_expire():
-    spec = load_vehicle(REPO / "vehicles" / "uk_solenoid_octagon.json")
+    spec = load_vehicle(REPO / "examples" / "vehicles" / "solenoid_octagon.json")
     sup = SafetySupervisor(spec)
     zeros = sup.expire(1.0)
     assert zeros is not None

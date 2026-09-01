@@ -11,7 +11,7 @@ REPO = Path(__file__).resolve().parents[1]
 
 
 def test_mpc_feasible_octagon():
-    spec = load_vehicle(REPO / "vehicles" / "uk_solenoid_octagon.json")
+    spec = load_vehicle(REPO / "examples" / "vehicles" / "solenoid_octagon.json")
     mpc = LinearMPC(spec, horizon=8)
     x = np.array([-0.6, 0.1, 0.2, 0.0, 0.0, 0.0])
     ref = np.array([0.6, 0.0, 0.0])
@@ -25,7 +25,7 @@ def test_mpc_feasible_octagon():
 
 
 def test_mpc_feasible_fans():
-    spec = load_vehicle(REPO / "vehicles" / "fan_quadrotor_plus.json")
+    spec = load_vehicle(REPO / "examples" / "vehicles" / "fan_plus.json")
     mpc = LinearMPC(spec, horizon=8)
     x = np.zeros(6)
     x[0] = -0.3
@@ -34,7 +34,7 @@ def test_mpc_feasible_fans():
 
 
 def test_pd_and_lqr_shapes():
-    spec = load_vehicle(REPO / "vehicles" / "fan_hex.json")
+    spec = load_vehicle(REPO / "examples" / "vehicles" / "fan_hex.json")
     x = np.array([0.2, -0.1, 0.3, 0.01, 0.0, 0.0])
     ref = np.zeros(3)
     for ctrl in (PDController(spec), LQRController(spec)):

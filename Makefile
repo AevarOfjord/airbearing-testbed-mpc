@@ -3,12 +3,12 @@ ifneq ($(wildcard .venv/bin/python),)
 PYTHON := .venv/bin/python
 endif
 PIP ?= $(PYTHON) -m pip
-VEHICLE ?= vehicles/uk_solenoid_octagon.json
+VEHICLE ?= examples/vehicles/fan_plus.json
 
-.PHONY: install test run compare-actuators new-vehicle edit-vehicle view check assets lab1 lab2 lab3 lab4
+.PHONY: install test run view edit-vehicle new-vehicle check lab1 lab2 lab3 lab4 identify compare report compare-actuators assets
 
 install:
-	$(PIP) install -e ".[dev]"
+	$(PIP) install -e ".[dev,viz]"
 
 test:
 	$(PYTHON) -m pytest
@@ -16,25 +16,17 @@ test:
 run:
 	$(PYTHON) -m airbearing run --vehicle $(VEHICLE)
 
-compare-actuators:
-	$(PYTHON) -m airbearing compare-actuators
-
-new-vehicle:
-	$(PYTHON) -m airbearing new-vehicle
+view:
+	$(PYTHON) -m airbearing view --vehicle $(VEHICLE)
 
 edit-vehicle:
 	$(PYTHON) -m airbearing edit-vehicle
 
-view:
-	$(PYTHON) -m airbearing view --vehicle $(VEHICLE)
+new-vehicle:
+	$(PYTHON) -m airbearing new-vehicle
 
 check:
 	$(PYTHON) -m airbearing check $(VEHICLE)
-
-assets:
-	$(PYTHON) -m airbearing run --vehicle vehicles/uk_solenoid_octagon.json --assets
-	$(PYTHON) -m airbearing compare-actuators --assets
-	$(PYTHON) -m airbearing view --record --duration 3 --vehicle vehicles/fan_quadrotor_plus.json
 
 lab1:
 	$(PYTHON) -m airbearing lab 1
@@ -47,3 +39,20 @@ lab3:
 
 lab4:
 	$(PYTHON) -m airbearing lab 4
+
+identify:
+	$(PYTHON) -m airbearing identify $(LOG) --vehicle $(VEHICLE)
+
+compare:
+	$(PYTHON) -m airbearing compare --sim $(SIM) --real $(REAL) --mismatch-delay 1
+
+report:
+	$(PYTHON) -m airbearing report $(RUN)
+
+compare-actuators:
+	$(PYTHON) -m airbearing compare-actuators
+
+assets:
+	$(PYTHON) -m airbearing run --vehicle examples/vehicles/solenoid_octagon.json --assets
+	$(PYTHON) -m airbearing compare-actuators --assets
+	$(PYTHON) -m airbearing view --record --duration 3 --vehicle examples/vehicles/fan_plus.json

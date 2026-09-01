@@ -15,7 +15,7 @@ def test_view_record(tmp_path: Path):
     gif = tmp_path / "live_twin.gif"
     rc = main([
         "view", "--record", "--duration", "1.2",
-        "--vehicle", str(REPO / "vehicles" / "fan_quadrotor_plus.json"),
+        "--vehicle", str(REPO / "examples" / "vehicles" / "fan_plus.json"),
         "--out", str(png), "--gif", str(gif),
         "--runs", str(tmp_path / "runs"),
     ])
@@ -24,7 +24,7 @@ def test_view_record(tmp_path: Path):
 
 
 def test_replay_mocap(tmp_path: Path):
-    spec = load_vehicle(REPO / "vehicles" / "fan_quadrotor_plus.json")
+    spec = load_vehicle(REPO / "examples" / "vehicles" / "fan_plus.json")
     mission = point_to_point(spec.table_size)
     mission.duration = 2.0
     res = Runtime(spec, LinearMPC(spec, horizon=6), mission, runs_root=tmp_path).run()

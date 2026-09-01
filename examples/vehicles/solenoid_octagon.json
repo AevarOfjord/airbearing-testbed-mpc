@@ -1,5 +1,5 @@
 {
-  "name": "uk_solenoid_octagon",
+  "name": "solenoid_octagon",
   "mass": 24.0,
   "Iz": 1.85,
   "com": [
@@ -12,7 +12,7 @@
   "rotational_damping": 0.02,
   "control_dt": 0.1,
   "sim_dt": 0.02,
-  "notes": "UK compressed-air testbed class (~24 kg, 8 solenoids). F_max=0.7 N is a typical starting guess \u2014 calibrate with a scale (docs/LAB.md). COM y-offset is intentional so students see coupling.",
+  "notes": "Example: compressed-air solenoids in an octagon (~24 kg class, 8 on/off jets, large table). F_max is a starting guess \u2014 calibrate with a scale (docs/LAB.md). COM y-offset is intentional so coupling shows up in logs.",
   "thrusters": [
     {
       "id": "T1",

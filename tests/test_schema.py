@@ -9,7 +9,7 @@ REPO = Path(__file__).resolve().parents[1]
 
 
 def _vehicle_files():
-    return sorted((REPO / "vehicles").glob("*.json"))
+    return sorted((REPO / "examples" / "vehicles").glob("*.json"))
 
 
 def test_example_exists():
@@ -24,27 +24,27 @@ def test_shipped_vehicles_validate(path: Path):
 
 
 def test_rejects_unknown_fields():
-    raw = json.loads((REPO / "vehicles" / "fan_quadrotor_plus.json").read_text())
+    raw = json.loads((REPO / "examples" / "vehicles" / "fan_plus.json").read_text())
     raw["gurobi_dll"] = "nope"
     with pytest.raises(Exception):
         validate_dict(raw)
 
 
 def test_rejects_missing_solenoid_pulse():
-    raw = json.loads((REPO / "vehicles" / "uk_solenoid_octagon.json").read_text())
+    raw = json.loads((REPO / "examples" / "vehicles" / "solenoid_octagon.json").read_text())
     del raw["thrusters"][0]["min_pulse_ms"]
     with pytest.raises(Exception):
         validate_dict(raw)
 
 
-def test_uk_is_eight_solenoids():
-    spec = load_vehicle(REPO / "vehicles" / "uk_solenoid_octagon.json")
+def test_octagon_is_eight_solenoids():
+    spec = load_vehicle(REPO / "examples" / "vehicles" / "solenoid_octagon.json")
     assert spec.n_thrusters == 8
     assert all(t.type == "binary_solenoid" for t in spec.thrusters)
 
 
 def test_micro_is_three():
-    spec = load_vehicle(REPO / "vehicles" / "micro_3thruster.json")
+    spec = load_vehicle(REPO / "examples" / "vehicles" / "micro_3thruster.json")
     assert spec.n_thrusters == 3
 
 

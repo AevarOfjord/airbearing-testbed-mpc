@@ -1,8 +1,7 @@
-"""Master/PhD labs. Student write-ups live in labs/; this module is the runner."""
+"""Curriculum labs. Student write-ups live in labs/; this module is the runner."""
 
 from __future__ import annotations
 
-import csv
 import json
 from pathlib import Path
 
@@ -15,25 +14,21 @@ from airbearing.control.pd import PDController
 from airbearing.identify import identify_from_log, synthesize_excitation_log
 from airbearing.missions import point_to_point
 from airbearing.runtime import Runtime
-from airbearing.spec import load_vehicle, spec_from_dict, spec_to_dict
+from airbearing.logschema import write_pose_csv
+from airbearing.report import print_report
+from airbearing.spec import load_vehicle, shipped_vehicle, spec_from_dict, spec_to_dict
 from airbearing.vehicle_editor import VehicleDraft, one_screen_report, plot_layout
 
 LABS = REPO / "labs"
 
 
 def write_mocap_csv(result, path: Path) -> Path:
+    import numpy as np
+
     path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fields = ["t", "x", "y", "yaw", "vx", "vy", "omega"]
-    with path.open("w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=fields)
-        w.writeheader()
-        for row in result.logs:
-            st = row.state
-            w.writerow(
-                {"t": row.t, "x": st[0], "y": st[1], "yaw": st[2], "vx": st[3], "vy": st[4], "omega": st[5]}
-            )
-    return path
+    t = np.array([row.t for row in result.logs])
+    st = np.array([row.state for row in result.logs])
+    return write_pose_csv(path, t, st)
 
 
 def _rmse(result) -> float:
@@ -73,7 +68,7 @@ def lab1_editor(runs: Path) -> int:
 
 def lab2_controllers(runs: Path) -> int:
     print("=== Lab 2 — PD vs LQR vs MPC ===")
-    spec = load_vehicle(REPO / "vehicles" / "fan_quadrotor_plus.json")
+    spec = load_vehicle(shipped_vehicle("fan_plus"))
     mission = point_to_point(spec.table_size)
     mission.duration = 6.0
     rows = []
@@ -83,6 +78,7 @@ def lab2_controllers(runs: Path) -> int:
         rmse = _rmse(res)
         rows.append((name, res.final_error, rmse, res.success, res.mean_solver_ms))
         print(f"{name:6s}  final={res.final_error:.3f} m  rmse={rmse:.3f}  ok={res.success}  solver={res.mean_solver_ms:.2f} ms")
+        print(print_report(res.run_dir), end="")
     out = Path(runs) / "lab2" / "summary.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps([{"controller": a, "final_error": b, "rmse": c, "success": d, "ms": e} for a, b, c, d, e in rows], indent=2))
@@ -94,7 +90,7 @@ def lab2_controllers(runs: Path) -> int:
 
 def lab3_identify(runs: Path) -> int:
     print("=== Lab 3 — identify vs uncalibrated RMSE ===")
-    spec = load_vehicle(REPO / "vehicles" / "fan_quadrotor_plus.json")
+    spec = load_vehicle(shipped_vehicle("fan_plus"))
     log = Path(runs) / "lab3" / "truth_log.csv"
     synthesize_excitation_log(spec, log, duration=5.0)
     wrong = spec_to_dict(spec)
@@ -102,19 +98,20 @@ def lab3_identify(runs: Path) -> int:
     wrong["Iz"] = spec.Iz * 1.8
     for th in wrong["thrusters"]:
         th["F_max"] = th["F_max"] * 0.55
-    idres = identify_from_log(log, REPO / "vehicles" / "fan_quadrotor_plus.json", out=Path(runs) / "lab3" / "identified.json")
+    idres = identify_from_log(log, shipped_vehicle("fan_plus"), out=Path(runs) / "lab3" / "identified.json", mode="full")
     print(f"truth mass={spec.mass:.3g} Iz={spec.Iz:.3g} F={ [t.F_max for t in spec.thrusters]}")
     print(f"fit   mass={idres['mass']:.3g} Iz={idres['Iz']:.3g} F={idres['F_max']} rmse={idres['rmse']:.3g}")
     # uncalibrated vs identified closed-loop on the true plant: compare prediction residual only
     assert abs(idres["mass"] - spec.mass) / spec.mass < 0.35
     print("mass recovered within 35% from a 5 s open-loop chirp (see docs/LAB.md).")
+    print(f"F_max_scale={idres.get('F_max_scale')} delay={idres.get('delay_steps')}")
     return 0
 
 
 def lab4_actuators(runs: Path) -> int:
     print("=== Lab 4 — binary vs PWM vs model mismatch ===")
-    solenoid = load_vehicle(REPO / "vehicles" / "uk_solenoid_octagon.json")
-    fans = load_vehicle(REPO / "vehicles" / "fan_quadrotor_plus.json")
+    solenoid = load_vehicle(shipped_vehicle("solenoid_octagon"))
+    fans = load_vehicle(shipped_vehicle("fan_plus"))
     mission_s = point_to_point(solenoid.table_size)
     mission_s.duration = 6.0
     mission_f = point_to_point(fans.table_size)

@@ -13,7 +13,9 @@ import numpy as np
 def repo_root() -> Path:
     here = Path(__file__).resolve()
     for cand in (here.parents[2], Path.cwd()):
-        if (cand / "vehicles").is_dir() and (cand / "schemas").is_dir():
+        if (cand / "schemas").is_dir() and (cand / "pyproject.toml").is_file():
+            return cand
+        if (cand / "schemas").is_dir() and ((cand / "examples" / "vehicles").is_dir() or (cand / "vehicles").is_dir()):
             return cand
     return here.parents[2]
 
@@ -350,8 +352,31 @@ def spec_to_dict(spec: SatelliteSpec) -> dict[str, Any]:
     return data
 
 
+def examples_dir() -> Path:
+    return repo_root() / "examples" / "vehicles"
+
+
 def vehicles_dir() -> Path:
-    return repo_root() / "vehicles"
+    """Student-owned JSON (created on demand). Shipped examples live in examples/vehicles/."""
+    d = repo_root() / "vehicles"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def shipped_vehicle(name: str) -> Path:
+    """Resolve a packaged example: fan_plus, solenoid_octagon, fan_hex, micro_3thruster."""
+    stem = name.replace(".json", "")
+    p = examples_dir() / f"{stem}.json"
+    if p.is_file():
+        return p
+    fallback = vehicles_dir() / f"{stem}.json"
+    if fallback.is_file():
+        return fallback
+    raise FileNotFoundError(f"vehicle {name} not found under examples/vehicles or vehicles/")
+
+
+def default_vehicle() -> Path:
+    return shipped_vehicle("fan_plus")
 
 
 def assert_vehicle_save_path(path: Path, *, allow_any: bool = False) -> Path:
